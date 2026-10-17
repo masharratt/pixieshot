@@ -274,7 +274,7 @@ void ScrollCaptureController::startAuto()
         scrollEventsAllowed(true);
         if (m_bar) {
             m_bar->setStatus(
-              tr("Auto needs Accessibility permission: allow Flameshot in "
+              tr("Auto needs Accessibility permission: allow Pixieshot in "
                  "System Settings, Privacy & Security, Accessibility. Scroll "
                  "by hand meanwhile."));
         }

@@ -139,7 +139,7 @@ void VisualsEditor::initTranslations()
                 QMessageBox::information(
                   this,
                   tr("Configuration"),
-                  tr("Flameshot must be restarted to apply these changes!"));
+                  tr("Pixieshot must be restarted to apply these changes!"));
             });
 
     localLayout->addWidget(m_selectTranslation);

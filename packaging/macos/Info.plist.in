@@ -5,7 +5,7 @@
     <key>CFBundleExecutable</key>
     <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
   	<key>CFBundleIconFile</key>
-	<string>flameshot</string>
+	<string>pixieshot</string>
     <key>CFBundleIdentifier</key>
     <string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
     <key>CFBundleName</key>
@@ -25,7 +25,7 @@
     <key>LSMinimumSystemVersion</key>
     <string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string>
     <key>NSScreenCaptureUsageDescription</key>
-    <string>Flameshot needs to record your screen to take screenshots and screen recordings.</string>
+    <string>Pixieshot needs to record your screen to take screenshots and screen recordings.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSUIElement</key>

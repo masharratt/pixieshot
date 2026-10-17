@@ -33,7 +33,7 @@ QString tr(const char* text)
 
 QString notAProject()
 {
-    return tr("This is not a Flameshot project file.");
+    return tr("This is not a Pixieshot project file.");
 }
 
 QString damaged()
@@ -113,7 +113,7 @@ QList<CaptureTool*> decodeObjects(const QJsonArray& objects,
         if (!tool || !tool->isSaveable()) {
             warn(warnings,
                  tr("Skipped an annotation of unknown type %1 (saved by a "
-                    "newer Flameshot?).")
+                    "newer Pixieshot?).")
                    .arg(name));
             continue;
         }
@@ -169,7 +169,7 @@ bool decode(const QByteArray& bytes, CaptureProject& out, QString* error)
     }
     if (version > kFormatVersion) {
         setError(error,
-                 tr("This project was saved by a newer version of Flameshot "
+                 tr("This project was saved by a newer version of Pixieshot "
                     "(project format %1; this version reads up to %2).")
                    .arg(version)
                    .arg(kFormatVersion));

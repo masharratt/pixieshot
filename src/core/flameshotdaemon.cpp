@@ -273,7 +273,7 @@ void FlameshotDaemon::checkForUpdates()
                 QDesktopServices::openUrl(QUrl(m_appLatestUrl));
             } else {
                 sendTrayNotification(tr("You have the latest version"),
-                                     "Flameshot");
+                                     "Pixieshot");
             }
         }
     }
@@ -433,7 +433,7 @@ void FlameshotDaemon::handleReplyCheckUpdates(QNetworkReply* reply)
             }
         } else if (m_showManualCheckAppUpdateStatus) {
             sendTrayNotification(tr("You have the latest version"),
-                                 "Flameshot");
+                                 "Pixieshot");
         }
     } else {
         qWarning() << "Failed to get information about the latest version. "
@@ -442,7 +442,7 @@ void FlameshotDaemon::handleReplyCheckUpdates(QNetworkReply* reply)
             if (FlameshotDaemon::instance()) {
                 FlameshotDaemon::instance()->sendTrayNotification(
                   tr("Failed to get information about the latest version."),
-                  "Flameshot");
+                  "Pixieshot");
             }
         }
     }

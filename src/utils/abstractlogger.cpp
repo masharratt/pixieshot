@@ -131,7 +131,7 @@ QString AbstractLogger::messageHeader(Channel channel, Target target)
 
     if (target == Notification) {
         messageChannel[0] = messageChannel[0].toUpper();
-        return "Flameshot " + messageChannel;
+        return "Pixieshot " + messageChannel;
     } else {
         return "flameshot: " + messageChannel + ": ";
     }

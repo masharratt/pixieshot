@@ -307,14 +307,14 @@ void ShortcutsWidget::checkPrintScreenForcesSnipping()
     if (!isPrintScreenKeyForSnippingDisabled() &&
         !ConfigHandler().ignorePrntScrForcesSnipping()) {
         QMessageBox msgBox;
-        msgBox.setWindowTitle("Flameshot");
+        msgBox.setWindowTitle("Pixieshot");
         msgBox.setIcon(QMessageBox::Question);
         msgBox.setText(tr("It seems, that Windows forces to open its screenshot"
                           " tool when the 'Print Screen' key is pressed. Would "
-                          "you like to disable this so that Flameshot can use "
+                          "you like to disable this so that Pixieshot can use "
                           "the 'Print Screen' key?") +
                        "\n\n" +
-                       tr("Flameshot must be restarted for changes to take "
+                       tr("Pixieshot must be restarted for changes to take "
                           "effect."));
         QPushButton* yesBtn = msgBox.addButton(QMessageBox::Yes);
         QPushButton* noBtn = msgBox.addButton(QMessageBox::No);
@@ -327,7 +327,7 @@ void ShortcutsWidget::checkPrintScreenForcesSnipping()
         if (msgBox.clickedButton() == yesBtn) {
             if (!disablePrintScreenKeyForSnipping()) {
                 QMessageBox::warning(
-                  this, "Flameshot", tr("The registry could not be changed!"));
+                  this, "Pixieshot", tr("The registry could not be changed!"));
             }
         } else if (msgBox.clickedButton() == noDontAskAgainBtn) {
             ConfigHandler().setIgnorePrntScrForcesSnipping(true);
@@ -358,11 +358,11 @@ bool ShortcutsWidget::disablePrintScreenKeyForSnipping()
 void ShortcutsWidget::initMsScreenclipCheckbox()
 {
     m_registerMsScreenclip =
-      new QCheckBox(tr("Register Flameshot as MS-SCREENCLIP application "
+      new QCheckBox(tr("Register Pixieshot as MS-SCREENCLIP application "
                        "(administrator privileges required)"),
                     this);
     m_registerMsScreenclip->setToolTip(
-      tr("After registering, you can select Flameshot as the default "
+      tr("After registering, you can select Pixieshot as the default "
          "screenshot application in Windows Settings."));
     m_registerMsScreenclip->setChecked(isMsScreenclipRegistered());
     m_layout->addWidget(m_registerMsScreenclip);
@@ -373,9 +373,9 @@ void ShortcutsWidget::initMsScreenclipCheckbox()
               if (!registerMsScreenclip()) {
                   QMessageBox::warning(
                     this,
-                    "Flameshot",
+                    "Pixieshot",
                     tr("The registry could not be changed!") + "\n" +
-                      tr("You may start Flameshot as administrator ONCE and "
+                      tr("You may start Pixieshot as administrator ONCE and "
                          "try again!"));
                   m_registerMsScreenclip->setChecked(false);
               }
@@ -383,9 +383,9 @@ void ShortcutsWidget::initMsScreenclipCheckbox()
               if (!unregisterMsScreenclip()) {
                   QMessageBox::warning(
                     this,
-                    "Flameshot",
+                    "Pixieshot",
                     tr("The registry could not be changed!") + "\n" +
-                      tr("You may start Flameshot as administrator ONCE and "
+                      tr("You may start Pixieshot as administrator ONCE and "
                          "try again!"));
                   m_registerMsScreenclip->setChecked(true);
               }

@@ -1,6 +1,6 @@
 # Feature Status (masharratt/flameshot fork)
 
-**Last Updated:** 2026-10-16 (added scrolling capture)
+**Last Updated:** 2026-10-17 (macOS app renamed to Pixieshot with new icon; settings paths unchanged)
 
 | Token | Meaning |
 |-------|---------|

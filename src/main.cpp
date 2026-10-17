@@ -16,6 +16,7 @@
 #include "core/flameshot.h"
 #include "core/flameshotdaemon.h"
 #include "utils/abstractlogger.h"
+#include "utils/appidentity.h"
 #include "utils/confighandler.h"
 #include "utils/filenamehandler.h"
 #include "utils/pathinfo.h"
@@ -149,11 +150,11 @@ void configureTranslation(QTranslator& translator, QTranslator& qtTranslator)
         if (ConfigHandler().uiLanguage() == QStringLiteral("auto")) {
             QLocale l;
             qWarning() << QStringLiteral(
-                            "No Flameshot translation found for %1")
+                            "No Pixieshot translation found for %1")
                             .arg(l.uiLanguages().join(", "));
         } else {
             qWarning() << QStringLiteral(
-                            "No Flameshot translation found for %1")
+                            "No Pixieshot translation found for %1")
                             .arg(ConfigHandler().uiLanguage());
         }
     }
@@ -221,8 +222,8 @@ int main(int argc, char* argv[])
     qRegisterMetaType<QList<int>>();
 
     QCoreApplication::setApplicationVersion(APP_VERSION);
-    QCoreApplication::setApplicationName(QStringLiteral("flameshot"));
-    QCoreApplication::setOrganizationName(QStringLiteral("flameshot"));
+    AppIdentity::apply();
+    QGuiApplication::setApplicationDisplayName(AppIdentity::displayName());
     QNetworkProxyFactory::setUseSystemConfiguration(true);
 
     // no arguments, just launch Flameshot

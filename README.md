@@ -117,12 +117,10 @@ cd pixieshot
 cmake -S . -B build -G Ninja -DQt6_DIR="$(brew --prefix qt6)/lib/cmake/Qt6"
 cmake --build build
 ctest --test-dir build        # optional: run the tests
-open build/src/flameshot.app
+open build/src/Pixieshot.app
 ```
 
 To keep macOS from asking for Screen Recording permission after every rebuild, sign with a local self-signed certificate and pass `-DCODE_SIGN_IDENTITY="<certificate name>"` to the first `cmake` command.
-
-> The app bundle is still called `flameshot.app` inside the build folder while the rename settles in.
 
 ## 🗺 What's next
 

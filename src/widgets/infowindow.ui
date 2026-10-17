@@ -99,7 +99,7 @@
      <item>
       <widget class="QLabel" name="VersionDetails">
        <property name="text">
-        <string>Flameshot v</string>
+        <string>Pixieshot v</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>

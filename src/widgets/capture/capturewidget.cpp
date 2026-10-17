@@ -862,7 +862,7 @@ void CaptureWidget::paintEvent(QPaintEvent* paintEvent)
 
     if (!isActiveWindow()) {
         drawErrorMessage(
-          tr("Flameshot has lost focus. Keyboard shortcuts won't "
+          tr("Pixieshot has lost focus. Keyboard shortcuts won't "
              "work until you click somewhere."),
           &painter);
     } else if (m_configError) {

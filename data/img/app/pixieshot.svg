@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff6fb5"/>
+      <stop offset="1" stop-color="#7b3ff2"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="url(#bg)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="url(#sheen)"/>
+  <!-- main four-point sparkle, centre (450,560) -->
+  <path fill="#ffffff" d="M450 250 C468 410 600 542 760 560 C600 578 468 710 450 870 C432 710 300 578 140 560 C300 542 432 410 450 250 Z"/>
+  <!-- companion sparkle, centre (740,330) -->
+  <path fill="#ffffff" fill-opacity="0.92" d="M740 220 C746 280 790 324 850 330 C790 336 746 380 740 440 C734 380 690 336 630 330 C690 324 734 280 740 220 Z"/>
+</svg>

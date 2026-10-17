@@ -244,7 +244,7 @@ void EditorWindow::saveProject()
       this,
       tr("Save Project"),
       suggested,
-      tr("Flameshot project (*.%1)").arg(suffix));
+      tr("Pixieshot project (*.%1)").arg(suffix));
     if (path.isEmpty()) {
         return;
     }
@@ -266,7 +266,7 @@ void EditorWindow::openProject()
       this,
       tr("Open Project"),
       QFileInfo(m_path).absolutePath(),
-      tr("Flameshot project (*.%1)").arg(suffix));
+      tr("Pixieshot project (*.%1)").arg(suffix));
     if (path.isEmpty()) {
         return;
     }

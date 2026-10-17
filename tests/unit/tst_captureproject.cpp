@@ -442,10 +442,10 @@ private slots:
                                           json,
                                           png);
 
-        QTest::newRow("empty") << QByteArray() << "not a Flameshot project";
+        QTest::newRow("empty") << QByteArray() << "not a Pixieshot project";
         QTest::newRow("random")
           << QByteArray("\x89PNG this is not a project at all", 33)
-          << "not a Flameshot project";
+          << "not a Pixieshot project";
         QTest::newRow("truncated") << good.left(good.size() / 2) << "damaged";
         QTest::newRow("version-zero")
           << container(captureproject::kMagic, 0, json, png) << "damaged";

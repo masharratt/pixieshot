@@ -341,13 +341,13 @@ void ConfigHandler::setStartupLaunch(const bool start)
                         << "-e"
                         << "tell application \"System Events\" to make login "
                            "item at end with properties {name: "
-                           "\"Flameshot\",path:\"/Applications/"
-                           "flameshot.app\", hidden:false}");
+                           "\"Pixieshot\",path:\"/Applications/"
+                           "Pixieshot.app\", hidden:false}");
     } else {
         process.start("osascript",
                       QStringList() << "-e"
                                     << "tell application \"System Events\" to "
-                                       "delete login item \"Flameshot\"");
+                                       "delete login item \"Pixieshot\"");
     }
     if (!process.waitForFinished()) {
         qWarning() << "Login items is changed. " << process.errorString();

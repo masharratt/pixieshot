@@ -29,42 +29,11 @@ set(CMAKE_AUTOUIC ON)
 
 # set application icon
 if (APPLE)
-    set(FLAMESHOT_ICONSET ${CMAKE_BINARY_DIR}/flameshot.iconset)
-    set(FLAMESHOT_ICNS ${CMAKE_BINARY_DIR}/flameshot.icns)
-
-    # generate iconset
-    execute_process(
-            COMMAND bash "-c" "mkdir -p \"${FLAMESHOT_ICONSET}\""
-    )
-
-    execute_process(
-            COMMAND bash "-c" "sips -z 16 16     \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_16x16.png"
-            COMMAND bash "-c" "sips -z 32 32     \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_16x16@2x.png"
-            COMMAND bash "-c" "sips -z 32 32     \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_32x32.png"
-            COMMAND bash "-c" "sips -z 64 64     \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_32x32@2x.png"
-            COMMAND bash "-c" "sips -z 64 64     \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_64x64x.png"
-            COMMAND bash "-c" "sips -z 128 128   \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_64x64@2.png"
-            COMMAND bash "-c" "sips -z 128 128   \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_128x128.png"
-            COMMAND bash "-c" "sips -z 256 256   \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_128x128@2x.png"
-            COMMAND bash "-c" "sips -z 256 256   \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_256x256.png"
-            COMMAND bash "-c" "sips -z 512 512   \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_256x256@2x.png"
-            COMMAND bash "-c" "sips -z 512 512   \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_512x512.png"
-            COMMAND bash "-c" "sips -z 1024 1024 \"${CMAKE_SOURCE_DIR}\"/data/img/app/org.flameshot.Flameshot-1024.png --out \"${FLAMESHOT_ICONSET}\"/icon_512x512@2x.png"
-
-            COMMAND bash "-c" "iconutil -o \"${FLAMESHOT_ICNS}\" -c icns \"${FLAMESHOT_ICONSET}\""
-    )
-
-    execute_process(
-        COMMAND bash "-c" "rm -R \"${FLAMESHOT_ICONSET}\""
-    )
-
-    execute_process(
-        # copy icon from cache generated on the localhost if generation on CI failed
-        COMMAND bash "-c" "[[ -r '\"${FLAMESHOT_ICNS}\"' ]] || cp \"${CMAKE_SOURCE_DIR}\"/packaging/macos/flameshot.icns \"${FLAMESHOT_ICNS}\""
-    )
+    # Pixieshot icon, rendered from data/img/app/pixieshot.svg and committed
+    set(FLAMESHOT_ICNS ${CMAKE_SOURCE_DIR}/packaging/macos/pixieshot.icns)
 
     # Set application icon
-    set(MACOSX_BUNDLE_ICON_FILE flameshot.icns)
+    set(MACOSX_BUNDLE_ICON_FILE pixieshot.icns)
 
     # And this part tells CMake where to find and install the file itself
     set(APP_ICON_MACOSX ${FLAMESHOT_ICNS})
@@ -219,11 +188,12 @@ endif()
 if (APPLE)
     set_target_properties(flameshot PROPERTIES
         MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_BUNDLE_NAME "Flameshot"
+        MACOSX_BUNDLE_BUNDLE_NAME "Pixieshot"
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
-        MACOSX_BUNDLE_IDENTIFIER "org.flameshot.Flameshot"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "org.flameshot.Flameshot" 
+        MACOSX_BUNDLE_IDENTIFIER "org.pixieshot.Pixieshot"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "org.pixieshot.Pixieshot"
+        OUTPUT_NAME "Pixieshot"
     ) 
     set_property(TARGET flameshot PROPERTY
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/packaging/macos/Info.plist.in
@@ -462,8 +432,8 @@ if (APPLE)
     # Custom target to create DMG (signed or unsigned)
     add_custom_target(create_dmg
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../packaging/macos/create_dmg.sh 
-            "${CMAKE_CURRENT_BINARY_DIR}/Flameshot.app"
-            "${CMAKE_CURRENT_BINARY_DIR}/Flameshot-${PROJECT_VERSION}.dmg"
+            "${CMAKE_CURRENT_BINARY_DIR}/Pixieshot.app"
+            "${CMAKE_CURRENT_BINARY_DIR}/Pixieshot-${PROJECT_VERSION}.dmg"
             "${CODE_SIGN_IDENTITY}"
             "${DMG_SIGN_IDENTITY}"
     DEPENDS flameshot
