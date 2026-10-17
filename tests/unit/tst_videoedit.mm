@@ -244,6 +244,44 @@ private Q_SLOTS:
         QVERIFY2(near(corner, s.backgroundColor1, 24),
                  qPrintable(describe(corner)));
     }
+
+    // From screenshot + glass: the static layer is drawn once from the first
+    // frame (red), so the background around the bezel is reddish, and the
+    // canvas grows by the bezel like the still
+    void beautifyGlassFromScreenshotUsesTheFirstFrame()
+    {
+        EffectSettings s;
+        s.cornerRadius = 8;
+        s.paddingPx = 24;
+        s.backgroundMode = BackgroundMode::FromScreenshot;
+        s.glass = true;
+        s.glassPx = 10;
+        s.grain = 10;
+
+        VideoExportParams p;
+        p.input = m_source;
+        p.output = m_dir.filePath(QStringLiteral("glass.mp4"));
+        p.range = { 0.0, 1.0 };
+        p.beautify = true;
+        p.effects = s;
+        p.dpr = 1.0;
+        QString error;
+        QVERIFY2(exportVideoBlocking(p, &error), qPrintable(error));
+
+        const BeautifyLayout layout = beautifyLayout(kSource, s, 1.0);
+        QCOMPARE(layout.bezel.adjusted(10, 10, -10, -10), layout.shot);
+        const VideoInfo info = probeVideo(p.output);
+        QVERIFY(info.ok);
+        QCOMPARE(info.pixels, videoCanvasSize(layout.canvas));
+
+        const QImage frame = videoFrameAt(p.output, 0.5, QSize());
+        const QColor center = frame.pixelColor(layout.frame.center());
+        const QColor corner = frame.pixelColor(3, 3);
+        QVERIFY2(near(center, kFrameColor, 24), qPrintable(describe(center)));
+        QVERIFY2(corner.red() > corner.blue() + 60 &&
+                   corner.red() > corner.green() + 60,
+                 qPrintable(describe(corner)));
+    }
 };
 
 QTEST_MAIN(TestVideoEdit)

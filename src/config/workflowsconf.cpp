@@ -15,6 +15,7 @@
 #include <QLinearGradient>
 #include <QPainter>
 #include <QPushButton>
+#include <QSlider>
 #include <QSpinBox>
 #include <QVBoxLayout>
 
@@ -115,6 +116,8 @@ void WorkflowsConf::addEffectsGroup()
     m_background->addItem(tr("None"), int(BackgroundMode::None));
     m_background->addItem(tr("Solid"), int(BackgroundMode::Solid));
     m_background->addItem(tr("Gradient"), int(BackgroundMode::Gradient));
+    m_background->addItem(tr("From screenshot"),
+                          int(BackgroundMode::FromScreenshot));
     form->addRow(tr("Background"), m_background);
 
     m_backgroundColor1 = new QPushButton(box);
@@ -122,6 +125,26 @@ void WorkflowsConf::addEffectsGroup()
 
     m_backgroundColor2 = new QPushButton(box);
     form->addRow(tr("Gradient end color"), m_backgroundColor2);
+
+    m_autoColors = new QCheckBox(tr("Auto colors"), box);
+    m_autoColors->setToolTip(
+      tr("Pick the gradient colors from the screenshot."));
+    form->addRow(QString(), m_autoColors);
+
+    m_glass = new QCheckBox(tr("Glass frame"), box);
+    m_glassPx = new QSpinBox(box);
+    m_glassPx->setRange(4, 64);
+    m_glassPx->setSuffix(tr(" px"));
+    auto* glassRow = new QHBoxLayout();
+    glassRow->addWidget(m_glass);
+    glassRow->addWidget(m_glassPx);
+    glassRow->addStretch();
+    form->addRow(QString(), glassRow);
+
+    m_grain = new QSlider(Qt::Horizontal, box);
+    m_grain->setRange(0, 100);
+    m_grain->setToolTip(tr("Fine noise over the background, hides banding."));
+    form->addRow(tr("Grain"), m_grain);
 
     m_aspect = new QComboBox(box);
     m_aspect->addItem(tr("Off"), 0);
@@ -169,6 +192,15 @@ void WorkflowsConf::addEffectsGroup()
             &QCheckBox::toggled,
             this,
             &WorkflowsConf::onEffectChanged);
+    connect(
+      m_autoColors, &QCheckBox::toggled, this, &WorkflowsConf::onEffectChanged);
+    connect(m_glass, &QCheckBox::toggled, this, &WorkflowsConf::onEffectChanged);
+    connect(m_glassPx,
+            QOverload<int>::of(&QSpinBox::valueChanged),
+            this,
+            &WorkflowsConf::onEffectChanged);
+    connect(
+      m_grain, &QSlider::valueChanged, this, &WorkflowsConf::onEffectChanged);
     connect(m_beautifyAlways,
             &QCheckBox::toggled,
             this,
@@ -279,6 +311,10 @@ void WorkflowsConf::onEffectChanged()
     config.setEffectBackgroundColor2(m_backgroundColor2Value);
     config.setEffectAspect(m_aspect->currentData().toInt());
     config.setEffectAutoBalance(m_autoBalance->isChecked());
+    config.setEffectAutoColors(m_autoColors->isChecked());
+    config.setEffectGlass(m_glass->isChecked());
+    config.setEffectGlassPx(m_glassPx->value());
+    config.setEffectGrain(m_grain->value());
     config.setBeautifyAlways(m_beautifyAlways->isChecked());
     updatePreview();
 }
@@ -296,13 +332,20 @@ void WorkflowsConf::updatePreview()
         button->setStyleSheet(
           QStringLiteral("background-color: %1;").arg(color.name()));
     }
-    // The second color only matters for a gradient
-    m_backgroundColor2->setEnabled(m_background->currentData().toInt() ==
-                                   int(BackgroundMode::Gradient));
-    m_backgroundColor1->setEnabled(m_background->currentData().toInt() !=
-                                   int(BackgroundMode::None));
+    // The colors only matter where they are used: the second one and auto
+    // colors for a gradient, none of them when the shot is the background
+    const int mode = m_background->currentData().toInt();
+    const bool gradientMode = mode == int(BackgroundMode::Gradient);
+    const bool manualColors = !(gradientMode && m_autoColors->isChecked());
+    m_backgroundColor2->setEnabled(gradientMode && manualColors);
+    m_backgroundColor1->setEnabled(
+      manualColors && (mode == int(BackgroundMode::Solid) || gradientMode));
+    m_autoColors->setEnabled(gradientMode);
+    m_glassPx->setEnabled(m_glass->isChecked());
+    m_grain->setEnabled(mode != int(BackgroundMode::None));
 
-    // Small gradient stand-in for a capture
+    // Small gradient stand-in for a capture, with a bar and a button so
+    // auto colors and From screenshot have something to pick up
     QImage sample(96, 64, QImage::Format_ARGB32_Premultiplied);
     QLinearGradient gradient(0, 0, 96, 64);
     gradient.setColorAt(0, QColor(70, 130, 220));
@@ -310,6 +353,8 @@ void WorkflowsConf::updatePreview()
     {
         QPainter p(&sample);
         p.fillRect(sample.rect(), gradient);
+        p.fillRect(QRect(0, 0, 96, 10), QColor(245, 246, 250));
+        p.fillRect(QRect(60, 46, 28, 10), QColor(236, 72, 96));
     }
     EffectSettings settings;
     settings.borderPx = m_borderPx->value();
@@ -323,6 +368,10 @@ void WorkflowsConf::updatePreview()
     settings.backgroundColor2 = m_backgroundColor2Value;
     settings.aspect = m_aspect->currentData().toInt();
     settings.autoBalance = m_autoBalance->isChecked();
+    settings.autoColors = m_autoColors->isChecked();
+    settings.glass = m_glass->isChecked();
+    settings.glassPx = m_glassPx->value();
+    settings.grain = m_grain->value();
     // Large paddings would overflow the box, so fit the result into it
     m_preview->setPixmap(
       QPixmap::fromImage(imageeffects::applyEffects(sample, settings))
@@ -372,6 +421,10 @@ void WorkflowsConf::updateComponents()
     m_aspect->setCurrentIndex(
       std::max(0, m_aspect->findData(config.effectAspect())));
     m_autoBalance->setChecked(config.effectAutoBalance());
+    m_autoColors->setChecked(config.effectAutoColors());
+    m_glass->setChecked(config.effectGlass());
+    m_glassPx->setValue(config.effectGlassPx());
+    m_grain->setValue(config.effectGrain());
     m_beautifyAlways->setChecked(config.beautifyAlways());
     for (auto it = m_recordShortcuts.begin(); it != m_recordShortcuts.end();
          ++it) {

@@ -2,13 +2,16 @@
 // Trim and Beautify export for screen recordings with AVAssetExportSession.
 // Trim alone copies the frames (passthrough). Beautify re-encodes through a
 // Core Image video composition: the static parts of the canvas (background,
-// shadow, border) are drawn once by imageeffects, and each frame is placed
-// on top at the spot beautifyLayout() gives, rounded like the still.
+// glass bezel, shadow, border) are drawn once by imageeffects, and each
+// frame is placed on top at the spot beautifyLayout() gives, rounded like the
+// still. Backgrounds made from the shot (From screenshot, auto colors) use
+// the first exported frame.
 // Compiled with ARC.
 
 #define QT_NO_KEYWORDS
 
 #include "platform/videoedit.h"
+#include "platform/videothumbnail.h"
 #include "utils/beautifylayout.h"
 
 #include <QCoreApplication>
@@ -104,14 +107,25 @@ CIImage* ciImageFrom(const QImage& image)
     return result;
 }
 
-// Background, shadow and border for the canvas, drawn by imageeffects on a
-// black stand-in shot (frames cover it). A video has no alpha, so whatever
-// is transparent ends up black.
-CIImage* backdropFor(QSize sourcePx, EffectSettings settings, qreal dpr)
+// Background, glass, shadow and border for the canvas, drawn once by
+// imageeffects on a stand-in shot that the frames cover: the first frame
+// when the background is made from the shot, black otherwise. A video has
+// no alpha, so whatever is transparent ends up black.
+CIImage* backdropFor(QSize sourcePx,
+                     EffectSettings settings,
+                     qreal dpr,
+                     const QImage& firstFrame)
 {
-    settings.autoBalance = false; // the stand-in has no content to balance
+    settings.autoBalance = false; // frames are placed unbalanced
     QImage standIn(sourcePx, QImage::Format_ARGB32_Premultiplied);
     standIn.fill(Qt::black);
+    if (!firstFrame.isNull()) {
+        QPainter p(&standIn);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+        QImage frame = firstFrame;
+        frame.setDevicePixelRatio(1.0);
+        p.drawImage(standIn.rect(), frame);
+    }
     standIn.setDevicePixelRatio(dpr);
     QImage drawn = imageeffects::applyEffects(standIn, settings);
     drawn.setDevicePixelRatio(1.0);
@@ -134,7 +148,8 @@ CGRect toCI(const QRect& r, int canvasHeight)
 AVVideoComposition* beautifyComposition(AVAsset* asset,
                                         QSize sourcePx,
                                         const EffectSettings& settings,
-                                        qreal dpr)
+                                        qreal dpr,
+                                        const QImage& firstFrame)
 {
     const BeautifyLayout layout = beautifyLayout(sourcePx, settings, dpr);
     const QSize video = videoCanvasSize(layout.canvas);
@@ -147,7 +162,7 @@ AVVideoComposition* beautifyComposition(AVAsset* asset,
     const CGRect frameRect = toCI(layout.frame, canvasH);
     // Extending the edge pixels fills the extra column or row with the
     // background instead of black
-    CIImage* backdrop = [[[backdropFor(sourcePx, settings, dpr)
+    CIImage* backdrop = [[[backdropFor(sourcePx, settings, dpr, firstFrame)
       imageByApplyingTransform:CGAffineTransformMakeTranslation(0, lift)]
       imageByClampingToExtent] imageByCroppingToRect:canvasRect];
     CIImage* mask = nil;
@@ -239,8 +254,13 @@ bool exportVideoBlocking(const VideoExportParams& p, QString* error)
         const CMTime end = CMTimeMakeWithSeconds(p.range.end, 600);
         session.timeRange = CMTimeRangeFromTimeToTime(start, end);
         if (p.beautify) {
-            session.videoComposition =
-              beautifyComposition(asset, pixelsOf(track), p.effects, p.dpr);
+            // Decoded only when the background needs the shot's pixels
+            const QImage firstFrame =
+              imageeffects::backgroundUsesShot(p.effects)
+                ? videoFrameAt(p.input, p.range.start, QSize())
+                : QImage();
+            session.videoComposition = beautifyComposition(
+              asset, pixelsOf(track), p.effects, p.dpr, firstFrame);
         }
 
         dispatch_semaphore_t done = dispatch_semaphore_create(0);

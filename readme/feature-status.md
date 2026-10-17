@@ -1,6 +1,6 @@
 # Feature Status (masharratt/flameshot fork)
 
-**Last Updated:** 2026-10-17 (macOS app renamed to Pixieshot with new icon; settings paths unchanged)
+**Last Updated:** 2026-10-17 (app renamed to Pixieshot; added the Beautify glass pack)
 
 | Token | Meaning |
 |-------|---------|
@@ -24,6 +24,8 @@ Plan: `planning/PLAN_sharex_fork.md` (local, not committed).
 | Image effects | beta | Border, rounded corners and drop shadow applied by the Apply Effects action, configured with a live preview on the Workflows tab. | Per-hotkey actions | Not yet checked by hand. Effects needing transparency save as PNG only on the workflow save path. |
 | Beautify | dev | Toolbar button and "Beautify every capture" option add a gradient or solid background, padding and shadow to the exported image. Configured on the Workflows tab. | Image effects | Not yet checked by hand. Save dialog path ignores the JPEG to PNG switch. |
 | Beautify size presets | dev | Option `effectAspect` grows the Beautify canvas to 1:1, 16:9, 9:16, 4:5 or 4:3 without cropping; `effectAutoBalance` first trims uneven blank margins from the capture. Set on the Workflows tab. | Beautify | Not yet checked by hand. |
+| Beautify glass frame | dev | Option `effectGlass` draws a Liquid Glass bezel (`effectGlassPx`, 4-64 px) between background and shot: refracted blurred background, white tint, specular rim, hairline. Shadow falls under the bezel. Stills and recording export match. | Beautify | Not yet checked by hand. CPU only; ~300 ms for a 4000x3000 capture with shadow. |
+| Beautify shot backgrounds | dev | Background "From screenshot" fills the canvas with the shot blurred, saturated and darkened. `effectAutoColors` picks the gradient colors from the shot. `effectGrain` adds noise to the background. Recordings use the first exported frame. | Beautify | Not yet checked by hand. Auto colors only applies to Gradient. |
 | Re-editable screenshots | dev | Annotated captures keep a project (base image plus annotations) with their history entry. Edit again, the after-edit thumbnail and the toast reopen it with objects still editable; the editor can Save and Open .fsproj files. | Capture history | Not yet checked by hand. Project files are kept until the history entry is trimmed or removed. |
 | Capture timer | dev | Option `captureDelaySec` (0 to 10) shows a countdown before hotkey and tray region captures start. Click the countdown to cancel. CLI --delay wins; recordings are not delayed. | Capture overlay | Not yet checked by hand. |
 | Copy Text (OCR) | dev | Toolbar button reads the text and any QR code in the selection with Apple Vision, copies it to the clipboard and closes the capture. | macOS Vision framework | Not yet checked by hand. macOS only, hidden elsewhere. QR path has no automated test. |

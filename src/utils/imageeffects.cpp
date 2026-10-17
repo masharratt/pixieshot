@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "imageeffects.h"
+#include "backgroundfx.h"
 #include "beautifylayout.h"
+#include "glassframe.h"
 
-#include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
 #include <QVector>
@@ -140,14 +141,22 @@ QImage roundCorners(const QImage& src, int radius)
     return out;
 }
 
-QImage dropShadow(const QImage& src,
-                  int blur,
-                  const QPoint& offset,
-                  const QColor& color)
+} // namespace imageeffects
+
+namespace {
+
+bool glassActive(const EffectSettings& settings, qreal dpr)
 {
-    if (src.isNull()) {
-        return src;
-    }
+    return settings.glass && scaledPx(settings.glassPx, dpr) > 0;
+}
+
+// The shadow of src alone, on the canvas shadowStep gives (src's own
+// pixels are not drawn)
+QImage shadowLayer(const QImage& src,
+                   int blur,
+                   const QPoint& offset,
+                   const QColor& color)
+{
     const qreal dpr = src.devicePixelRatio();
     const int radius = beautifygeometry::shadowBlurRadius(blur, dpr);
     const beautifygeometry::Step step =
@@ -156,9 +165,6 @@ QImage dropShadow(const QImage& src,
     const int dy = scaledPx(offset.y(), dpr);
     const int w = step.canvas.width();
     const int h = step.canvas.height();
-    // Position of the original inside the canvas
-    const int ix = step.origin.x();
-    const int iy = step.origin.y();
     const QImage plain = physical(src);
 
     // Alpha mask of the original at the shadow position
@@ -167,7 +173,7 @@ QImage dropShadow(const QImage& src,
     {
         QPainter p(&mask);
         p.setCompositionMode(QPainter::CompositionMode_Source);
-        p.drawImage(ix + dx, iy + dy, plain);
+        p.drawImage(step.origin.x() + dx, step.origin.y() + dy, plain);
     }
     QVector<float> alpha(w * h);
     for (int y = 0; y < h; ++y) {
@@ -193,9 +199,107 @@ QImage dropShadow(const QImage& src,
                                          int(a * 255.f + 0.5f)));
         }
     }
+    return out;
+}
+
+// src on a background canvas of its padding/aspect step. `shot` feeds the
+// backgrounds made from the shot's pixels.
+QImage composeOnBackground(const QImage& src,
+                           const EffectSettings& settings,
+                           const QImage& shot)
+{
+    const qreal dpr = src.devicePixelRatio();
+    const beautifygeometry::Step step = beautifygeometry::backgroundStep(
+      src.size(), settings.paddingPx, settings.aspect, dpr);
+    if (src.isNull() || (step.canvas == src.size() &&
+                         settings.backgroundMode == BackgroundMode::None)) {
+        return src;
+    }
+    QImage out = backgroundfx::renderBackground(step.canvas, settings, shot);
     {
         QPainter p(&out);
-        p.drawImage(ix, iy, plain);
+        p.drawImage(step.origin, physical(src));
+    }
+    out.setDevicePixelRatio(dpr);
+    return out;
+}
+
+// Glass path: bezel around the (bordered, rounded) shot, shadow under the
+// bezel, then background, glass, shot
+QImage composeWithGlass(const QImage& shotImage,
+                        const EffectSettings& settings,
+                        const QImage& source)
+{
+    using namespace beautifygeometry;
+    const qreal dpr = shotImage.devicePixelRatio();
+    const Step glass = glassStep(shotImage.size(), settings.glassPx, dpr);
+    const int g = glass.origin.x();
+    const qreal innerRadius =
+      settings.cornerRadius > 0 ? settings.cornerRadius * dpr : 0.0;
+    const qreal outerRadius = innerRadius + g;
+
+    Step shadow{ glass.canvas, QPoint(0, 0) };
+    QImage shadowImage;
+    if (settings.shadow) {
+        // The bezel's shape casts the shadow
+        QImage plate(glass.canvas, QImage::Format_ARGB32_Premultiplied);
+        plate.fill(Qt::transparent);
+        {
+            QPainter p(&plate);
+            p.setRenderHint(QPainter::Antialiasing);
+            p.setPen(Qt::NoPen);
+            p.setBrush(Qt::black);
+            p.drawRoundedRect(
+              QRectF(QPointF(0, 0), QSizeF(glass.canvas)), outerRadius, outerRadius);
+        }
+        plate.setDevicePixelRatio(dpr);
+        shadow = shadowStep(
+          glass.canvas, settings.shadowBlur, settings.shadowOffset, dpr);
+        shadowImage = shadowLayer(
+          plate, settings.shadowBlur, settings.shadowOffset, settings.shadowColor);
+    }
+    const Step bg =
+      backgroundStep(shadow.canvas, settings.paddingPx, settings.aspect, dpr);
+    QImage out = backgroundfx::renderBackground(bg.canvas, settings, source);
+    // The glass refracts the background alone, not the shadow
+    const QImage behind = out;
+    const QRect bezel(bg.origin + shadow.origin, glass.canvas);
+    const QRect shotRect(bezel.topLeft() + glass.origin, shotImage.size());
+    {
+        QPainter p(&out);
+        if (!shadowImage.isNull()) {
+            p.drawImage(bg.origin, shadowImage);
+        }
+    }
+    glassframe::drawBezel(
+      out, behind, bezel, outerRadius, shotRect, innerRadius, dpr);
+    {
+        QPainter p(&out);
+        p.drawImage(shotRect.topLeft(), physical(shotImage));
+    }
+    out.setDevicePixelRatio(dpr);
+    return out;
+}
+
+} // namespace
+
+namespace imageeffects {
+
+QImage dropShadow(const QImage& src,
+                  int blur,
+                  const QPoint& offset,
+                  const QColor& color)
+{
+    if (src.isNull()) {
+        return src;
+    }
+    const qreal dpr = src.devicePixelRatio();
+    const beautifygeometry::Step step =
+      beautifygeometry::shadowStep(src.size(), blur, offset, dpr);
+    QImage out = shadowLayer(src, blur, offset, color);
+    {
+        QPainter p(&out);
+        p.drawImage(step.origin, physical(src));
     }
     out.setDevicePixelRatio(dpr);
     return out;
@@ -208,35 +312,13 @@ QImage addBackground(const QImage& src,
                      const QColor& color2,
                      int aspect)
 {
-    const qreal dpr = src.devicePixelRatio();
-    const beautifygeometry::Step step =
-      beautifygeometry::backgroundStep(src.size(), padding, aspect, dpr);
-    if (src.isNull() ||
-        (step.canvas == src.size() && mode == BackgroundMode::None)) {
-        return src;
-    }
-    const int w = step.canvas.width();
-    const int h = step.canvas.height();
-    const bool opaque = mode != BackgroundMode::None;
-    QImage out(w,
-               h,
-               opaque ? QImage::Format_RGB32
-                      : QImage::Format_ARGB32_Premultiplied);
-    if (mode == BackgroundMode::Gradient) {
-        QPainter p(&out);
-        QLinearGradient gradient(0, 0, out.width(), out.height());
-        gradient.setColorAt(0, color1);
-        gradient.setColorAt(1, color2);
-        p.fillRect(out.rect(), gradient);
-    } else {
-        out.fill(mode == BackgroundMode::Solid ? color1 : QColor(Qt::transparent));
-    }
-    {
-        QPainter p(&out);
-        p.drawImage(step.origin, physical(src));
-    }
-    out.setDevicePixelRatio(dpr);
-    return out;
+    EffectSettings settings;
+    settings.paddingPx = padding;
+    settings.backgroundMode = mode;
+    settings.backgroundColor1 = color1;
+    settings.backgroundColor2 = color2;
+    settings.aspect = aspect;
+    return composeOnBackground(src, settings, src);
 }
 
 QImage autoBalance(const QImage& src)
@@ -268,23 +350,31 @@ QImage autoBalance(const QImage& src)
 
 QImage applyEffects(const QImage& src, const EffectSettings& settings)
 {
-    QImage out = settings.autoBalance ? autoBalance(src) : src;
+    // The shot's own pixels (before border) feed From screenshot and auto
+    // colors
+    const QImage source = settings.autoBalance ? autoBalance(src) : src;
+    QImage out = source;
     if (settings.borderPx > 0) {
         out = addBorder(out, settings.borderPx, settings.borderColor);
     }
     if (settings.cornerRadius > 0) {
         out = roundCorners(out, settings.cornerRadius);
     }
+    if (glassActive(settings, out.devicePixelRatio()) && !out.isNull()) {
+        return composeWithGlass(out, settings, source);
+    }
     if (settings.shadow) {
         out = dropShadow(
           out, settings.shadowBlur, settings.shadowOffset, settings.shadowColor);
     }
-    return addBackground(out,
-                         settings.paddingPx,
-                         settings.backgroundMode,
-                         settings.backgroundColor1,
-                         settings.backgroundColor2,
-                         settings.aspect);
+    return composeOnBackground(out, settings, source);
+}
+
+bool backgroundUsesShot(const EffectSettings& settings)
+{
+    return settings.backgroundMode == BackgroundMode::FromScreenshot ||
+           (settings.backgroundMode == BackgroundMode::Gradient &&
+            settings.autoColors);
 }
 
 bool needsAlpha(const EffectSettings& settings)
@@ -292,8 +382,9 @@ bool needsAlpha(const EffectSettings& settings)
     if (settings.backgroundMode != BackgroundMode::None) {
         return false;
     }
+    // Glass over no background is translucent
     return settings.cornerRadius > 0 || settings.shadow ||
-           settings.paddingPx > 0 || settings.aspect > 0;
+           settings.paddingPx > 0 || settings.aspect > 0 || settings.glass;
 }
 
 } // namespace imageeffects

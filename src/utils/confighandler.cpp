@@ -114,11 +114,15 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     OPTION("effectCornerRadius"          ,BoundedInt         ( 0, 200, 0     )),
     OPTION("effectShadow"                ,Bool               ( false         )),
     OPTION("effectPadding"               ,BoundedInt         ( 0, 512, 64    )),
-    OPTION("effectBackground"            ,BoundedInt         ( 0, 2, 2       )),
+    OPTION("effectBackground"            ,BoundedInt         ( 0, 3, 2       )),
     OPTION("effectBackgroundColor1"      ,Color              ( QColor(0x8B, 0x5C, 0xF6) )),
     OPTION("effectBackgroundColor2"      ,Color              ( QColor(0x3B, 0x82, 0xF6) )),
     OPTION("effectAspect"                ,BoundedInt         ( 0, 5, 0       )),
     OPTION("effectAutoBalance"           ,Bool               ( false         )),
+    OPTION("effectAutoColors"            ,Bool               ( false         )),
+    OPTION("effectGlass"                 ,Bool               ( false         )),
+    OPTION("effectGlassPx"               ,BoundedInt         ( 4, 64, 18     )),
+    OPTION("effectGrain"                 ,BoundedInt         ( 0, 100, 0     )),
     OPTION("beautifyAlways"              ,Bool               ( false         )),
     OPTION("captureHistoryMax"           ,LowerBoundedInt    ( 1, 500        )),
     OPTION("gifFps"                      ,BoundedInt         ( 1, 50, 15     )),
@@ -260,6 +264,10 @@ EffectSettings ConfigHandler::effectSettings()
     settings.backgroundColor2 = effectBackgroundColor2();
     settings.aspect = effectAspect();
     settings.autoBalance = effectAutoBalance();
+    settings.autoColors = effectAutoColors();
+    settings.glass = effectGlass();
+    settings.glassPx = effectGlassPx();
+    settings.grain = effectGrain();
     return settings;
 }
 

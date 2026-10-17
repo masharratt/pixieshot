@@ -18,6 +18,8 @@ struct BeautifyLayout
     QRect shot;               // the shot including its border
     QRect frame;              // the untouched source pixels
     qreal cornerRadius = 0.0; // rounding applied to `shot`
+    QRect bezel;              // glass bezel around `shot` (== shot when off)
+    qreal bezelRadius = 0.0;  // rounding applied to `bezel`
 
     // True when the effects change nothing
     bool isIdentity() const;
@@ -47,6 +49,9 @@ struct Step
 };
 
 Step borderStep(QSize input, int borderPx, qreal dpr);
+
+// Glass bezel of glassPx logical pixels on each side
+Step glassStep(QSize input, int glassPx, qreal dpr);
 
 // Box blur radius per pass for a shadow blur of `blur` logical pixels
 int shadowBlurRadius(int blur, qreal dpr);

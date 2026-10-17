@@ -11,6 +11,9 @@ enum class BackgroundMode
     None = 0,
     Solid = 1,
     Gradient = 2, // diagonal, top-left color1 to bottom-right color2
+    // The shot itself scaled to cover the canvas, heavily blurred, more
+    // saturated and a little darker (album-art look)
+    FromScreenshot = 3,
 };
 
 // Settings for the after-capture effects. Sizes are logical pixels; the
@@ -33,6 +36,15 @@ struct EffectSettings
     int aspect = 0;
     // Trim uneven near-uniform margins from the raw capture first
     bool autoBalance = false;
+    // Gradient mode only: pick the two colors from the shot instead of
+    // backgroundColor1/2
+    bool autoColors = false;
+    // Liquid Glass bezel of glassPx (logical) around the shot, between the
+    // background and the shot. The shadow falls under the bezel.
+    bool glass = false;
+    int glassPx = 18;
+    // 0..100 monochrome noise over the background only (kills banding)
+    int grain = 0;
 };
 
 namespace imageeffects {
@@ -65,12 +77,16 @@ QImage addBackground(const QImage& src,
 // most 40% of the size per side, always at least 1px of content left).
 QImage autoBalance(const QImage& src);
 
-// Order: auto-balance, border, round corners, shadow, padding + background +
-// aspect. Identity when everything is off.
+// Order: auto-balance, border, round corners, glass bezel, shadow, padding +
+// background + aspect. Identity when everything is off.
 QImage applyEffects(const QImage& src, const EffectSettings& settings);
 
 // True when the result can contain transparent pixels (a background fills
 // the canvas, so it makes the result opaque)
 bool needsAlpha(const EffectSettings& settings);
+
+// True when the background is computed from the shot's pixels (From
+// screenshot, or Gradient with auto colors)
+bool backgroundUsesShot(const EffectSettings& settings);
 
 } // namespace imageeffects
