@@ -156,6 +156,10 @@ public:
     CONFIG_GETTER_SETTER(effectBackgroundColor2, setEffectBackgroundColor2, QColor)
     CONFIG_GETTER_SETTER(effectAspect, setEffectAspect, int)
     CONFIG_GETTER_SETTER(effectAutoBalance, setEffectAutoBalance, bool)
+    CONFIG_GETTER_SETTER(effectAutoColors, setEffectAutoColors, bool)
+    CONFIG_GETTER_SETTER(effectGlass, setEffectGlass, bool)
+    CONFIG_GETTER_SETTER(effectGlassPx, setEffectGlassPx, int)
+    CONFIG_GETTER_SETTER(effectGrain, setEffectGrain, int)
     CONFIG_GETTER_SETTER(beautifyAlways, setBeautifyAlways, bool)
 
     // All effect options as one value, the single place that reads them

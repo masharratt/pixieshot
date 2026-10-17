@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Tests for the pure image effects (border, rounded corners, drop shadow).
 
+#include "utils/backgroundfx.h"
+#include "utils/beautifylayout.h"
 #include "utils/imageeffects.h"
 
+#include <QElapsedTimer>
 #include <QImage>
+#include <QPainter>
 #include <QTest>
 #include <algorithm>
 #include <cmath>
@@ -16,6 +20,78 @@ QImage solid(int w, int h, const QColor& color, qreal dpr = 1.0)
     img.fill(color);
     img.setDevicePixelRatio(dpr);
     return img;
+}
+
+// Left half one color, right half another
+QImage halves(int w, int h, const QColor& left, const QColor& right)
+{
+    QImage img = solid(w, h, left);
+    QPainter p(&img);
+    p.fillRect(QRect(w / 2, 0, w - w / 2, h), right);
+    return img;
+}
+
+// A light window with a title bar, sidebar, buttons and text lines
+QImage uiLike(int w, int h)
+{
+    QImage img(w, h, QImage::Format_ARGB32_Premultiplied);
+    img.fill(QColor(246, 247, 250));
+    QPainter p(&img);
+    p.fillRect(QRect(0, 0, w, h / 12), QColor(52, 120, 246));
+    p.fillRect(QRect(0, h / 12, w / 5, h), QColor(232, 236, 244));
+    for (int i = 0; i < 6; ++i) {
+        p.fillRect(QRect(w / 4, h / 6 + i * h / 9, w / 2, h / 40),
+                   QColor(60, 64, 72));
+    }
+    p.fillRect(
+      QRect(w * 3 / 4, h * 5 / 6, w / 6, h / 14), QColor(236, 72, 96));
+    p.fillRect(QRect(w / 4, h * 5 / 6, w / 6, h / 14), QColor(34, 197, 94));
+    return img;
+}
+
+QColor meanColor(const QImage& img, const QRect& exclude = QRect())
+{
+    double r = 0, g = 0, b = 0;
+    qint64 n = 0;
+    for (int y = 0; y < img.height(); ++y) {
+        for (int x = 0; x < img.width(); ++x) {
+            if (exclude.contains(x, y)) {
+                continue;
+            }
+            const QRgb c = img.pixel(x, y);
+            r += qRed(c);
+            g += qGreen(c);
+            b += qBlue(c);
+            ++n;
+        }
+    }
+    return n == 0 ? QColor() : QColor(int(r / n), int(g / n), int(b / n));
+}
+
+int rgbDistance(const QColor& a, const QColor& b)
+{
+    const int dr = a.red() - b.red();
+    const int dg = a.green() - b.green();
+    const int db = a.blue() - b.blue();
+    return int(std::sqrt(double(dr * dr + dg * dg + db * db)));
+}
+
+QString describe(const QColor& c)
+{
+    return QStringLiteral("%1,%2,%3").arg(c.red()).arg(c.green()).arg(c.blue());
+}
+
+// True when `rect` of `a` equals all of `b`, pixel for pixel
+bool sameRegion(const QImage& a, const QRect& rect, const QImage& b)
+{
+    for (int y = 0; y < rect.height(); ++y) {
+        for (int x = 0; x < rect.width(); ++x) {
+            if (a.pixel(rect.x() + x, rect.y() + y) != b.pixel(x, y)) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 } // namespace
@@ -336,6 +412,296 @@ private slots:
         EffectSettings s;
         s.autoBalance = true;
         QCOMPARE(imageeffects::applyEffects(src, s).size(), QSize(75, 60));
+    }
+
+    // --- glass pack -----------------------------------------------------
+
+    void fromScreenshotIsOpaqueAndKeepsShotMean()
+    {
+        const QImage src = uiLike(300, 200);
+        EffectSettings s;
+        s.paddingPx = 80;
+        s.backgroundMode = BackgroundMode::FromScreenshot;
+        const QImage out = imageeffects::applyEffects(src, s);
+        QVERIFY(!imageeffects::needsAlpha(s));
+        const BeautifyLayout layout = beautifyLayout(src.size(), s, 1.0);
+        QCOMPARE(out.size(), layout.canvas);
+        for (const QPoint& pt : { QPoint(0, 0),
+                                  QPoint(out.width() - 1, out.height() - 1),
+                                  QPoint(5, out.height() / 2) }) {
+            QCOMPARE(out.pixelColor(pt).alpha(), 255);
+        }
+        const QColor bg = meanColor(out, layout.shot);
+        const QColor shot = meanColor(src);
+        QVERIFY2(rgbDistance(bg, shot) < 60,
+                 qPrintable(describe(bg) + " vs " + describe(shot)));
+        // Not just a copy of the shot's mean: it carries the darkening
+        QVERIFY2(bg.lightness() < shot.lightness(),
+                 qPrintable(describe(bg) + " vs " + describe(shot)));
+        // Blurred: no hard edges survive in the background
+        QVERIFY(rgbDistance(out.pixelColor(0, 0), out.pixelColor(1, 1)) < 8);
+        // The shot itself is untouched
+        QVERIFY(sameRegion(out, layout.frame, src));
+    }
+
+    void fromScreenshotKeepsTheShotLayout()
+    {
+        // Red left, blue right: the backdrop is not a flat fill
+        const QImage src =
+          halves(200, 100, QColor(220, 40, 40), QColor(40, 60, 220));
+        EffectSettings s;
+        s.paddingPx = 60;
+        s.backgroundMode = BackgroundMode::FromScreenshot;
+        const QImage out = imageeffects::applyEffects(src, s);
+        const QColor left = out.pixelColor(4, out.height() / 2);
+        const QColor right = out.pixelColor(out.width() - 5, out.height() / 2);
+        QVERIFY2(left.red() > left.blue() + 60, qPrintable(describe(left)));
+        QVERIFY2(right.blue() > right.red() + 60, qPrintable(describe(right)));
+    }
+
+    void autoColorsAreDeterministicDistinctAndFromTheImage()
+    {
+        const QImage src =
+          halves(240, 160, QColor(220, 40, 40), QColor(40, 60, 220));
+        const auto a = backgroundfx::autoGradientColors(src);
+        const auto b = backgroundfx::autoGradientColors(src);
+        QCOMPARE(a.first, b.first);
+        QCOMPARE(a.second, b.second);
+        QVERIFY2(rgbDistance(a.first, a.second) > 80,
+                 qPrintable(describe(a.first) + " " + describe(a.second)));
+        auto reddish = [](const QColor& c) {
+            return c.red() > c.blue() + 40 && c.red() > c.green() + 40;
+        };
+        auto bluish = [](const QColor& c) {
+            return c.blue() > c.red() + 40 && c.blue() > c.green() + 20;
+        };
+        // Red is on the left, so it starts the top-left to bottom-right run
+        QVERIFY2(reddish(a.first) && bluish(a.second),
+                 qPrintable(describe(a.first) + " " + describe(a.second)));
+    }
+
+    void autoColorsSkipGreysWhenColorExists()
+    {
+        // Mostly white UI with a blue bar and colored buttons
+        const QImage src = uiLike(320, 200);
+        const auto c = backgroundfx::autoGradientColors(src);
+        QVERIFY2(c.first.hsvSaturationF() > 0.25 &&
+                   c.second.hsvSaturationF() > 0.25,
+                 qPrintable(describe(c.first) + " " + describe(c.second)));
+    }
+
+    void autoColorsOnGreyFallBackSanely()
+    {
+        QImage src = solid(200, 120, QColor(128, 128, 128));
+        {
+            QPainter p(&src);
+            p.fillRect(QRect(20, 20, 80, 40), QColor(200, 200, 200));
+        }
+        const auto a = backgroundfx::autoGradientColors(src);
+        const auto b = backgroundfx::autoGradientColors(src);
+        QCOMPARE(a.first, b.first);
+        QCOMPARE(a.second, b.second);
+        QVERIFY(a.first.isValid() && a.second.isValid());
+        // No invented hue, but still two tones
+        QVERIFY2(a.first.hsvSaturationF() < 0.25 &&
+                   a.second.hsvSaturationF() < 0.25,
+                 qPrintable(describe(a.first) + " " + describe(a.second)));
+        QVERIFY2(rgbDistance(a.first, a.second) >= 20,
+                 qPrintable(describe(a.first) + " " + describe(a.second)));
+    }
+
+    void autoColorsContrastWithTheShotEdge()
+    {
+        // Mid-grey edge with mid-lightness colors inside: the gradient must
+        // move away from the edge's lightness
+        QImage src = solid(240, 160, QColor(128, 128, 128));
+        {
+            QPainter p(&src);
+            p.fillRect(QRect(20, 20, 100, 120), QColor(200, 90, 90));
+            p.fillRect(QRect(120, 20, 100, 120), QColor(90, 120, 200));
+        }
+        const auto c = backgroundfx::autoGradientColors(src);
+        const qreal bgL = (c.first.lightnessF() + c.second.lightnessF()) / 2;
+        const qreal edgeL = QColor(128, 128, 128).lightnessF();
+        QVERIFY2(std::abs(bgL - edgeL) >= 0.12,
+                 qPrintable(QString::number(bgL) + " " + describe(c.first) +
+                            " " + describe(c.second)));
+    }
+
+    void autoColorsDriveTheGradient()
+    {
+        const QImage src =
+          halves(100, 60, QColor(220, 40, 40), QColor(40, 60, 220));
+        EffectSettings s;
+        s.paddingPx = 60;
+        s.backgroundMode = BackgroundMode::Gradient;
+        s.backgroundColor1 = QColor(0, 255, 0);
+        s.backgroundColor2 = QColor(0, 255, 0);
+        s.autoColors = true;
+        const QImage out = imageeffects::applyEffects(src, s);
+        const auto c = backgroundfx::autoGradientColors(src);
+        QVERIFY2(rgbDistance(out.pixelColor(0, 0), c.first) < 12,
+                 qPrintable(describe(out.pixelColor(0, 0))));
+        QVERIFY(rgbDistance(out.pixelColor(out.width() - 1, out.height() - 1),
+                            c.second) < 12);
+        QVERIFY(imageeffects::backgroundUsesShot(s));
+        s.autoColors = false;
+        QVERIFY(!imageeffects::backgroundUsesShot(s));
+        s.backgroundMode = BackgroundMode::FromScreenshot;
+        QVERIFY(imageeffects::backgroundUsesShot(s));
+    }
+
+    void glassBezelDiffersFromBackgroundAndShotIsUntouched()
+    {
+        const QImage src = uiLike(200, 140);
+        const QColor fill(120, 90, 200);
+        EffectSettings s;
+        s.paddingPx = 40;
+        s.backgroundMode = BackgroundMode::Solid;
+        s.backgroundColor1 = fill;
+        s.glass = true;
+        s.glassPx = 16;
+        const QImage out = imageeffects::applyEffects(src, s);
+        const BeautifyLayout layout = beautifyLayout(src.size(), s, 1.0);
+        QCOMPARE(out.size(), layout.canvas);
+        QCOMPARE(layout.frame.size(), src.size());
+        QVERIFY(sameRegion(out, layout.frame, src));
+        // Every sampled bezel pixel differs from the plain background
+        int changed = 0;
+        int samples = 0;
+        for (int i = 1; i < 15; ++i) {
+            for (const QPoint& pt :
+                 { QPoint(layout.frame.center().x(), layout.bezel.top() + i),
+                   QPoint(layout.bezel.left() + i, layout.frame.center().y()),
+                   QPoint(layout.frame.center().x(),
+                          layout.bezel.bottom() - i) }) {
+                ++samples;
+                if (rgbDistance(out.pixelColor(pt), fill) > 6) {
+                    ++changed;
+                }
+            }
+        }
+        QCOMPARE(changed, samples);
+        // Top-left rim is brighter than the bottom-right rim
+        const QColor tl =
+          out.pixelColor(layout.bezel.left(), layout.bezel.top() + 30);
+        const QColor br =
+          out.pixelColor(layout.bezel.right(), layout.bezel.bottom() - 30);
+        QVERIFY2(tl.lightness() > br.lightness() + 10,
+                 qPrintable(describe(tl) + " " + describe(br)));
+        // Outside the bezel the canvas is plain background again
+        QCOMPARE(out.pixelColor(0, 0), fill);
+        QCOMPARE(out.pixelColor(layout.bezel.left() - 2, layout.bezel.top() - 2),
+                 fill);
+    }
+
+    void glassShadowSitsUnderTheBezel()
+    {
+        const QImage src = solid(120, 80, Qt::white);
+        EffectSettings s;
+        s.paddingPx = 30;
+        s.backgroundMode = BackgroundMode::Solid;
+        s.backgroundColor1 = QColor(200, 200, 200);
+        s.glass = true;
+        s.glassPx = 12;
+        s.shadow = true;
+        s.shadowBlur = 12;
+        s.shadowOffset = QPoint(0, 8);
+        const QImage out = imageeffects::applyEffects(src, s);
+        const BeautifyLayout layout = beautifyLayout(src.size(), s, 1.0);
+        QCOMPARE(out.size(), layout.canvas);
+        QVERIFY(sameRegion(out, layout.frame, src));
+        // Just below the bezel the shadow darkens the background
+        const QColor below = out.pixelColor(layout.bezel.center().x(),
+                                            layout.bezel.bottom() + 4);
+        QVERIFY2(below.lightness() < 190, qPrintable(describe(below)));
+    }
+
+    void needsAlphaWithGlass()
+    {
+        EffectSettings s;
+        s.glass = true;
+        QVERIFY(imageeffects::needsAlpha(s));
+        s.backgroundMode = BackgroundMode::FromScreenshot;
+        QVERIFY(!imageeffects::needsAlpha(s));
+    }
+
+    void grainIsDeterministicAndBackgroundOnly()
+    {
+        const QImage src = uiLike(160, 100);
+        EffectSettings s;
+        s.paddingPx = 30;
+        s.backgroundMode = BackgroundMode::Gradient;
+        const QImage none = imageeffects::applyEffects(src, s);
+        s.grain = 0;
+        QCOMPARE(imageeffects::applyEffects(src, s), none);
+        s.grain = 40;
+        const QImage a = imageeffects::applyEffects(src, s);
+        const QImage b = imageeffects::applyEffects(src, s);
+        QCOMPARE(a, b);
+        QVERIFY(a != none);
+        const BeautifyLayout layout = beautifyLayout(src.size(), s, 1.0);
+        QVERIFY(sameRegion(a, layout.frame, src));
+        // Monochrome: a pixel's channels all move by the same amount
+        int mono = 0;
+        int moved = 0;
+        for (int x = 0; x < 40; ++x) {
+            const QColor g = a.pixelColor(x, 3);
+            const QColor n = none.pixelColor(x, 3);
+            const int dr = g.red() - n.red();
+            moved += dr != 0 ? 1 : 0;
+            if (dr == g.green() - n.green() && dr == g.blue() - n.blue()) {
+                ++mono;
+            }
+        }
+        QVERIFY2(moved >= 20, qPrintable(QString::number(moved)));
+        QVERIFY2(mono >= 32, qPrintable(QString::number(mono)));
+    }
+
+    void grainZeroLeavesTheImageAlone()
+    {
+        QImage bg(64, 32, QImage::Format_RGB32);
+        bg.fill(QColor(90, 100, 110));
+        const QImage before = bg;
+        backgroundfx::addGrain(bg, 0);
+        QCOMPARE(bg, before);
+        backgroundfx::addGrain(bg, 50);
+        QVERIFY(bg != before);
+    }
+
+    // 4000x3000 with every expensive option on. Release bound 400 ms; Debug
+    // builds (no NDEBUG) get a generous 4 s so the test still catches
+    // order-of-magnitude regressions there.
+    void performanceOnLargeCapture()
+    {
+        const QImage src = uiLike(4000, 3000);
+        EffectSettings s;
+        s.cornerRadius = 12;
+        s.shadow = true;
+        s.paddingPx = 64;
+        s.backgroundMode = BackgroundMode::FromScreenshot;
+        s.glass = true;
+        s.grain = 20;
+#ifdef NDEBUG
+        const qint64 bound = 400;
+#else
+        const qint64 bound = 4000;
+#endif
+        QElapsedTimer timer;
+        timer.start();
+        QImage out = imageeffects::applyEffects(src, s);
+        const qint64 fromShot = timer.restart();
+        s.backgroundMode = BackgroundMode::Gradient;
+        s.autoColors = true;
+        out = imageeffects::applyEffects(src, s);
+        const qint64 autoColors = timer.elapsed();
+        qInfo("4000x3000: from-screenshot+glass+shadow+grain %lld ms, "
+              "auto-colors+glass+shadow+grain %lld ms",
+              fromShot,
+              autoColors);
+        QVERIFY(!out.isNull());
+        QVERIFY2(fromShot < bound, qPrintable(QString::number(fromShot)));
+        QVERIFY2(autoColors < bound, qPrintable(QString::number(autoColors)));
     }
 };
 

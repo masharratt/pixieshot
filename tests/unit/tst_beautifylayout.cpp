@@ -61,6 +61,31 @@ EffectSettings paddingNoBackground()
     return s;
 }
 
+EffectSettings glassy()
+{
+    EffectSettings s = everything();
+    s.glass = true;
+    s.glassPx = 18;
+    return s;
+}
+
+EffectSettings glassFromShot()
+{
+    EffectSettings s = glassy();
+    s.backgroundMode = BackgroundMode::FromScreenshot;
+    s.aspect = 2;
+    s.grain = 30;
+    return s;
+}
+
+EffectSettings glassOnly()
+{
+    EffectSettings s;
+    s.glass = true;
+    s.glassPx = 7;
+    return s;
+}
+
 } // namespace
 
 Q_DECLARE_METATYPE(EffectSettings)
@@ -88,6 +113,9 @@ private slots:
             { "social", withAspect(4) },
             { "classic", withAspect(5) },
             { "paddingNoBackground", paddingNoBackground() },
+            { "glass", glassy() },
+            { "glassFromShot", glassFromShot() },
+            { "glassOnly", glassOnly() },
         };
         for (const QSize& size : sizes) {
             for (qreal dpr : dprs) {
@@ -144,6 +172,37 @@ private slots:
         QCOMPARE(layout.shot.adjusted(6, 6, -6, -6), layout.frame);
         QCOMPARE(layout.cornerRadius, 24.0);
         QVERIFY(QRect(QPoint(0, 0), layout.canvas).contains(layout.shot));
+    }
+
+    // The bezel wraps the shot by glassPx on each side, rounded by the
+    // shot's radius plus the bezel, and the source still lands on `frame`
+    void glassBezelWrapsTheShot()
+    {
+        EffectSettings s = glassy();
+        const BeautifyLayout layout = beautifyLayout(QSize(100, 80), s, 2.0);
+        QCOMPARE(layout.bezel.adjusted(36, 36, -36, -36), layout.shot);
+        QCOMPARE(layout.bezelRadius, layout.cornerRadius + 36.0);
+        QVERIFY(QRect(QPoint(0, 0), layout.canvas).contains(layout.bezel));
+
+        EffectSettings off = everything();
+        const BeautifyLayout plain = beautifyLayout(QSize(100, 80), off, 2.0);
+        QCOMPARE(plain.bezel, plain.shot);
+        QCOMPARE(layout.canvas, plain.canvas + QSize(72, 72));
+
+        // Red source lands exactly on the frame under the glass
+        s.backgroundMode = BackgroundMode::Solid;
+        s.backgroundColor1 = QColor(0, 0, 255);
+        s.borderPx = 0;
+        s.cornerRadius = 0;
+        const QSize source(60, 40);
+        const QImage out =
+          imageeffects::applyEffects(solid(source, Qt::red, 1.0), s);
+        const BeautifyLayout l1 = beautifyLayout(source, s, 1.0);
+        QCOMPARE(out.size(), l1.canvas);
+        QCOMPARE(out.pixelColor(l1.frame.topLeft()), QColor(Qt::red));
+        QCOMPARE(out.pixelColor(l1.frame.bottomRight()), QColor(Qt::red));
+        QVERIFY(out.pixelColor(l1.frame.topLeft() - QPoint(1, 1)) !=
+                QColor(Qt::red));
     }
 
     void identityWhenOff()

@@ -13,6 +13,7 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QPushButton;
+class QSlider;
 class QSpinBox;
 
 // Settings tab: which after-capture actions each workflow hotkey runs.
@@ -52,6 +53,10 @@ private:
     QPushButton* m_backgroundColor2 = nullptr;
     QComboBox* m_aspect = nullptr;
     QCheckBox* m_autoBalance = nullptr;
+    QCheckBox* m_autoColors = nullptr;
+    QCheckBox* m_glass = nullptr;
+    QSpinBox* m_glassPx = nullptr;
+    QSlider* m_grain = nullptr;
     QCheckBox* m_beautifyAlways = nullptr;
     QLabel* m_preview = nullptr;
 

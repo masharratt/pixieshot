@@ -30,6 +30,9 @@ target_sources(
           strfparse.cpp
           imageeffects.cpp
           beautifylayout.cpp
+          backgroundfx.cpp
+          autocolors.cpp
+          glassframe.cpp
           scrollstitch.cpp
 )
 

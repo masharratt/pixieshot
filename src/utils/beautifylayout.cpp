@@ -42,6 +42,11 @@ Step borderStep(QSize input, int borderPx, qreal dpr)
     return { input + QSize(2 * b, 2 * b), QPoint(b, b) };
 }
 
+Step glassStep(QSize input, int glassPx, qreal dpr)
+{
+    return borderStep(input, glassPx, dpr);
+}
+
 int shadowBlurRadius(int blur, qreal dpr)
 {
     return std::max(0,
@@ -116,11 +121,20 @@ BeautifyLayout beautifyLayout(QSize sourcePx,
     if (settings.cornerRadius > 0) {
         layout.cornerRadius = settings.cornerRadius * dpr;
     }
+    layout.bezel = layout.shot;
+    layout.bezelRadius = layout.cornerRadius;
     auto place = [&layout](const Step& s) {
         layout.canvas = s.canvas;
         layout.frame.translate(s.origin);
         layout.shot.translate(s.origin);
+        layout.bezel.translate(s.origin);
     };
+    if (settings.glass && scaledPx(settings.glassPx, dpr) > 0) {
+        const Step s = glassStep(layout.canvas, settings.glassPx, dpr);
+        place(s);
+        layout.bezel = QRect(QPoint(0, 0), layout.canvas);
+        layout.bezelRadius = layout.cornerRadius + s.origin.x();
+    }
     if (settings.shadow) {
         place(shadowStep(
           layout.canvas, settings.shadowBlur, settings.shadowOffset, dpr));
