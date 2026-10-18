@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2017-2019 Alejandro Sirgo Rica & Contributors
 
 #include "linetool.h"
+#include "tools/animannotations.h"
 
 #include "tools/curvemath.h"
 
@@ -55,6 +56,26 @@ void LineTool::process(QPainter& painter, const QPixmap& pixmap)
     path.quadTo(*control(), points().second);
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(path);
+}
+
+// Draws from the start point to the end, along the bend if any
+void LineTool::processReveal(QPainter& painter,
+                             const QPixmap& pixmap,
+                             double progress)
+{
+    if (progress <= 0.0 || progress >= 1.0) {
+        CaptureTool::processReveal(painter, pixmap, progress);
+        return;
+    }
+    QPainterPath path(points().first);
+    if (isBent()) {
+        path.quadTo(*control(), points().second);
+    } else {
+        path.lineTo(points().second);
+    }
+    painter.setPen(QPen(color(), size()));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(animannotations::trimPath(path, progress));
 }
 
 void LineTool::pressed(CaptureContext& context)

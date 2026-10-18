@@ -78,6 +78,7 @@ target_sources(
           curvemath.cpp
           capturecontext.cpp
           drawabletools.cpp
+          animannotations.cpp
           toolfactory.cpp
           toolstate.cpp
           abstractactiontool.h
@@ -86,5 +87,6 @@ target_sources(
           curvemath.h
           capturetool.h
           drawabletools.h
+          animannotations.h
           toolfactory.h
           toolstate.h)

@@ -23,6 +23,18 @@ QImage physical(const QImage& src)
     return plain;
 }
 
+// A copy QPainter can draw on with alpha, devicePixelRatio kept
+QImage paintable(const QImage& src)
+{
+    if (src.format() == QImage::Format_RGB32 ||
+        src.format() == QImage::Format_ARGB32_Premultiplied) {
+        return src.copy();
+    }
+    QImage out = src.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    out.setDevicePixelRatio(src.devicePixelRatio());
+    return out;
+}
+
 int longSide(QSize s)
 {
     return std::max(s.width(), s.height());
@@ -128,13 +140,13 @@ AnimatedFrames::AnimatedFrames(const QImage& shot,
     m_size = evenSize ? videoCanvasSize(m_layout.canvas) : m_layout.canvas;
 
     // The static layers, the same calls as imageeffects::applyEffects
-    QImage layer = source;
+    m_source = source;
     if (m_settings.borderPx > 0) {
-        layer = imageeffects::addBorder(layer, m_settings.borderPx, m_settings.borderColor);
+        const beautifygeometry::Step step =
+          beautifygeometry::borderStep(source.size(), m_settings.borderPx, m_dpr);
+        m_shotOffset = step.origin.x() > 0 ? step.origin : QPoint();
     }
-    if (m_settings.cornerRadius > 0) {
-        layer = imageeffects::roundCorners(layer, m_settings.cornerRadius);
-    }
+    const QImage layer = layerFrom(source);
     m_glass = m_layout.bezel != m_layout.shot;
     if (m_settings.shadow) {
         m_shadow = m_glass ? imageeffects::glassShadow(m_layout.bezel.size(),
@@ -150,18 +162,109 @@ AnimatedFrames::AnimatedFrames(const QImage& shot,
           m_layout.bezel.size(), m_settings.shadowBlur, m_settings.shadowOffset, m_dpr);
         m_shadowPos = m_layout.bezel.topLeft() - step.origin;
     }
-    m_shot = physical(layer).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    m_shot = layer;
+}
+
+QImage AnimatedFrames::layerFrom(const QImage& source) const
+{
+    QImage layer = source;
+    if (m_settings.borderPx > 0) {
+        layer = imageeffects::addBorder(layer, m_settings.borderPx, m_settings.borderColor);
+    }
+    if (m_settings.cornerRadius > 0) {
+        layer = imageeffects::roundCorners(layer, m_settings.cornerRadius);
+    }
+    return physical(layer).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+}
+
+void AnimatedFrames::setAnnotations(std::shared_ptr<AnnotationLayer> layer,
+                                    AnnotationMode mode)
+{
+    m_annotations = (layer && layer->count() > 0) ? std::move(layer) : nullptr;
+    m_annotationMode = mode;
+    m_plan = {};
+    if (m_source.isNull()) {
+        return;
+    }
+    if (!m_annotations) {
+        m_shot = layerFrom(m_source);
+        return;
+    }
+    if (mode == AnnotationMode::DrawIn) {
+        m_plan = animtimeline::plan(m_durationSec, m_annotations->count());
+        m_shot = layerFrom(m_source);
+        return;
+    }
+    // Static: drawn once into the shot, exactly like the flattened still
+    QImage drawn = paintable(m_source);
+    {
+        QPainter p(&drawn);
+        p.setRenderHint(QPainter::Antialiasing);
+        for (int i = 0; i < m_annotations->count(); ++i) {
+            m_annotations->paint(p, i, 1.0);
+        }
+    }
+    m_shot = layerFrom(drawn);
+}
+
+QImage AnimatedFrames::shotLayerAt(double tSec) const
+{
+    if (!m_annotations || !m_plan.drawsIn()) {
+        return m_shot;
+    }
+    QImage drawn;
+    for (int i = 0; i < m_annotations->count(); ++i) {
+        const double progress = animtimeline::progress(m_plan, i, tSec);
+        const double opacity = animtimeline::opacity(m_plan, i, tSec);
+        if (progress <= 0.0 || opacity <= 0.0) {
+            continue;
+        }
+        if (drawn.isNull()) {
+            drawn = paintable(m_source);
+        }
+        QPainter p(&drawn);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setOpacity(opacity);
+        m_annotations->paint(p, i, progress);
+    }
+    // Nothing shows before the first reveal and after the fade
+    return drawn.isNull() ? m_shot : layerFrom(drawn);
+}
+
+QImage AnimatedFrames::shotLayerShown() const
+{
+    return m_plan.drawsIn() ? shotLayerAt(m_plan.revealEnd()) : m_shot;
 }
 
 void AnimatedFrames::setMotion(ShotMotion motion, double durationSec)
 {
     m_motion = motion;
     m_durationSec = durationSec;
+    if (m_plan.drawsIn()) {
+        m_plan = animtimeline::plan(m_durationSec, m_plan.count);
+    }
 }
 
 QImage AnimatedFrames::frame(double phase) const
 {
-    return frameAt(phase, shotmotion::poseAt(m_motion, phase, m_durationSec));
+    return frameAt(phase, poseAt(phase));
+}
+
+shotmotion::Pose AnimatedFrames::poseAt(double phase) const
+{
+    if (!m_plan.drawsIn()) {
+        return shotmotion::poseAt(m_motion, phase, m_durationSec);
+    }
+    return shotmotion::poseAt(m_motion,
+                              animtimeline::motionPhase(m_plan, phase),
+                              animtimeline::motionDurationSec(m_plan));
+}
+
+QRectF AnimatedFrames::shotArea(const shotmotion::Pose& pose) const
+{
+    const QTransform t = shotmotion::transformFor(
+      m_motion, pose.amount, QRectF(m_layout.bezel), m_dpr);
+    return t.isIdentity() ? QRectF(m_layout.shot) : t.mapRect(QRectF(m_layout.shot));
 }
 
 QRect AnimatedFrames::shotBounds(const shotmotion::Pose& pose) const
@@ -172,10 +275,24 @@ QRect AnimatedFrames::shotBounds(const shotmotion::Pose& pose) const
         return m_layout.shot;
     }
     // One pixel more for the smoothing at the edges
-    return t.mapRect(QRectF(m_layout.shot))
+    return shotArea(pose)
       .toAlignedRect()
       .adjusted(-1, -1, 1, 1)
       .intersected(QRect(QPoint(0, 0), m_size));
+}
+
+QRect AnimatedFrames::annotationBounds(int index, const shotmotion::Pose& pose) const
+{
+    if (!m_annotations || index < 0 || index >= m_annotations->count()) {
+        return {};
+    }
+    const QRectF logical = m_annotations->bounds(index);
+    const QRectF onCanvas(
+      QPointF(logical.topLeft() * m_dpr) + m_shotOffset + m_layout.shot.topLeft(),
+      logical.size() * m_dpr);
+    const QTransform t = shotmotion::transformFor(
+      m_motion, pose.amount, QRectF(m_layout.bezel), m_dpr);
+    return (t.isIdentity() ? onCanvas : t.mapRect(onCanvas)).toAlignedRect();
 }
 
 QImage AnimatedFrames::frameAt(double phase, const shotmotion::Pose& pose) const
@@ -194,6 +311,8 @@ QImage AnimatedFrames::frameAt(double phase, const shotmotion::Pose& pose) const
     // hides banding without shimmering or costing the encoder bits
     backgroundfx::addGrain(out, m_settings.grain);
 
+    const double t = (phase - std::floor(phase)) * m_durationSec;
+    const QImage shotLayer = shotLayerAt(t);
     const QTransform move = shotmotion::transformFor(
       m_motion, pose.amount, QRectF(m_layout.bezel), m_dpr);
     if (move.isIdentity() && pose.sweep < 0) {
@@ -216,7 +335,7 @@ QImage AnimatedFrames::frameAt(double phase, const shotmotion::Pose& pose) const
                                   m_dpr);
         }
         QPainter p(&out);
-        p.drawImage(m_layout.shot.topLeft(), m_shot);
+        p.drawImage(m_layout.shot.topLeft(), shotLayer);
         return out;
     }
 
@@ -231,7 +350,7 @@ QImage AnimatedFrames::frameAt(double phase, const shotmotion::Pose& pose) const
     p.setRenderHint(QPainter::SmoothPixmapTransform);
     p.setTransform(move);
     if (!m_glass && pose.sweep < 0) {
-        p.drawImage(m_layout.shot.topLeft(), m_shot);
+        p.drawImage(m_layout.shot.topLeft(), shotLayer);
         return out;
     }
     const QRect area =
@@ -259,7 +378,7 @@ QImage AnimatedFrames::frameAt(double phase, const shotmotion::Pose& pose) const
     {
         QPainter lp(&layer);
         const QRect shot = m_layout.shot.translated(-origin);
-        lp.drawImage(shot.topLeft(), m_shot);
+        lp.drawImage(shot.topLeft(), shotLayer);
         if (pose.sweep >= 0) {
             paintSweep(lp, QRectF(shot), m_layout.cornerRadius, pose.sweep);
         }
@@ -267,3 +386,4 @@ QImage AnimatedFrames::frameAt(double phase, const shotmotion::Pose& pose) const
     p.drawImage(origin, layer);
     return out;
 }
+

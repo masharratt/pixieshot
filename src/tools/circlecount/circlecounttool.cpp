@@ -181,6 +181,27 @@ void CircleCountTool::process(QPainter& painter, const QPixmap& pixmap)
     painter.setPen(orig_pen);
 }
 
+// Pops in: grows from 60% to full size about its centre while fading in
+void CircleCountTool::processReveal(QPainter& painter,
+                                    const QPixmap& pixmap,
+                                    double progress)
+{
+    if (progress <= 0.0 || progress >= 1.0) {
+        CaptureTool::processReveal(painter, pixmap, progress);
+        return;
+    }
+    constexpr double kFrom = 0.6;
+    const double scale = kFrom + (1.0 - kFrom) * progress;
+    const QPointF centre = points().first;
+    painter.save();
+    painter.translate(centre);
+    painter.scale(scale, scale);
+    painter.translate(-centre);
+    painter.setOpacity(painter.opacity() * progress);
+    process(painter, pixmap);
+    painter.restore();
+}
+
 void CircleCountTool::paintMousePreview(QPainter& painter,
                                         const CaptureContext& context)
 {

@@ -2,6 +2,9 @@
 // SPDX-FileCopyrightText: 2017-2019 Alejandro Sirgo Rica & Contributors
 
 #include "penciltool.h"
+#include "tools/animannotations.h"
+
+#include <QPainterPath>
 #include <QPainter>
 
 PencilTool::PencilTool(QObject* parent)
@@ -40,6 +43,24 @@ void PencilTool::process(QPainter& painter, const QPixmap& pixmap)
     Q_UNUSED(pixmap)
     painter.setPen(QPen(m_color, size()));
     painter.drawPolyline(m_points.data(), m_points.size());
+}
+
+// Draws along the stroke, from where the pen went down
+void PencilTool::processReveal(QPainter& painter,
+                               const QPixmap& pixmap,
+                               double progress)
+{
+    if (progress <= 0.0 || progress >= 1.0 || m_points.size() < 2) {
+        CaptureTool::processReveal(painter, pixmap, progress);
+        return;
+    }
+    QPainterPath path(m_points.first());
+    for (int i = 1; i < m_points.size(); ++i) {
+        path.lineTo(m_points[i]);
+    }
+    painter.setPen(QPen(m_color, size()));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(animannotations::trimPath(path, progress));
 }
 
 void PencilTool::paintMousePreview(QPainter& painter,

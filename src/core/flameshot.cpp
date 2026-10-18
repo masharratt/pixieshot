@@ -1006,9 +1006,20 @@ void Flameshot::exportCapture(const QPixmap& rawCapture,
 
 #if defined(Q_OS_MACOS)
     if (tasks & CR::ANIMATE) {
-        // From the raw capture: the export applies the effects itself, over
-        // the animated background. Named after the saved PNG when there is one.
-        AnimExportJob::start(rawCapture.toImage(), animateNextTo);
+        // Un-beautified: the export applies the effects itself, over the
+        // animated background. With annotations, from the project (the base
+        // without them, and the objects) so they can draw themselves in.
+        // Named after the saved PNG when there is one.
+        const CaptureProject project = req.project();
+        AnimSource source;
+        if (!project.isEmpty() && !project.objects.isEmpty()) {
+            source.base = project.base;
+            source.objects = project.objects;
+        } else {
+            source.base = rawCapture.toImage();
+        }
+        source.dpr = source.base.devicePixelRatio();
+        AnimExportJob::start(source, animateNextTo);
     }
 #endif
 

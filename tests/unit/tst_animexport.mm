@@ -4,6 +4,7 @@
 
 #define QT_NO_KEYWORDS
 
+#include "fakes/annotatedsample.h"
 #include "platform/animexport.h"
 #include "platform/videoedit.h"
 #include "utils/animatedframe.h"
@@ -67,6 +68,19 @@ int gifFrames(const QString& path, double* seconds)
     CFRelease(src);
     return int(n);
 }
+
+// One solid box per object that wipes in with its progress: enough to see
+// the annotations reach the encoded frames
+class BoxLayer : public AnnotationLayer
+{
+public:
+    int count() const override { return 1; }
+    void paint(QPainter& painter, int, double progress) override
+    {
+        painter.fillRect(QRectF(150, 90, 60 * progress, 40), QColor(20, 160, 60));
+    }
+    QRectF bounds(int) const override { return QRectF(150, 90, 60, 40); }
+};
 
 } // namespace
 
@@ -160,6 +174,78 @@ private Q_SLOTS:
         QVERIFY(!middle.isNull());
         const QRect shot = AnimatedFrames(p.shot, p.effects, p.style).layout().shot;
         QVERIFY(first.copy(shot) != middle.copy(shot));
+    }
+
+    // Draw-in annotations reach the GIF: absent in the first frame, present
+    // in the hold, gone again by the last frame
+    void gifDrawsAnnotationsIn()
+    {
+        AnimExportParams p;
+        p.shot = sampleShot();
+        p.effects = settings();
+        p.style = AnimStyle::Aurora;
+        p.durationSec = 3;
+        p.fps = 15;
+        p.annotations = std::make_shared<BoxLayer>();
+        p.annotationMode = AnnotationMode::DrawIn;
+        p.gifPath = m_dir.filePath(QStringLiteral("drawin.gif"));
+        QString error;
+        QVERIFY2(exportAnimationBlocking(p, {}, nullptr, &error), qPrintable(error));
+        AnimatedFrames frames(p.shot, p.effects, p.style);
+        // The middle of the box on the canvas
+        const QPoint at = frames.layout().shot.topLeft() + QPoint(180, 110);
+        QImageReader reader(p.gifPath);
+        QList<QImage> all;
+        for (QImage img = reader.read(); !img.isNull(); img = reader.read()) {
+            all << img;
+        }
+        QCOMPARE(all.size(), 45);
+        auto greenish = [](QRgb c) {
+            return qGreen(c) > 120 && qRed(c) < 80 && qBlue(c) < 110;
+        };
+        QVERIFY2(!greenish(all.first().pixel(at)), "box drawn in frame 0");
+        QVERIFY2(greenish(all.at(22).pixel(at)),
+                 qPrintable(QString::number(all.at(22).pixel(at), 16)));
+        QVERIFY2(!greenish(all.last().pixel(at)), "box still drawn at the loop end");
+    }
+
+    // Opt-in: real annotations drawing themselves in, as MP4 and GIF
+    void saveAnnotatedSampleLoop()
+    {
+        const QString dir = qEnvironmentVariable("PIXIE_ANIM_SAMPLES");
+        if (dir.isEmpty()) {
+            QSKIP("Set PIXIE_ANIM_SAMPLES to a folder to save a sample loop");
+        }
+        QDir().mkpath(dir);
+        const PreparedAnimSource prepared = testtools::annotatedSample();
+
+        AnimExportParams p;
+        p.shot = prepared.base;
+        p.annotations = prepared.annotations;
+        p.annotationMode = AnnotationMode::DrawIn;
+        p.effects = settings();
+        p.effects.cornerRadius = 12;
+        p.effects.palette = beautifypalette::presets().at(0).stops;
+        p.style = AnimStyle::Flow;
+        p.motion = ShotMotion::Tilt;
+        p.durationSec = 5;
+        p.fps = 30;
+        p.mp4Path = dir + QStringLiteral("/drawin-tilt-flow.mp4");
+        p.gifPath = dir + QStringLiteral("/drawin-tilt-flow.gif");
+        AnimExportResult result;
+        QString error;
+        if (!exportAnimationBlocking(p, {}, &result, &error)) {
+            if (result.encoderUnavailable) {
+                p.mp4Path.clear();
+                QVERIFY2(exportAnimationBlocking(p, {}, &result, &error),
+                         qPrintable(error));
+                QSKIP("No H.264 encoder: only the GIF was written");
+            }
+            QFAIL(qPrintable(error));
+        }
+        qInfo("draw-in mp4 %lld bytes, gif %lld bytes",
+              QFileInfo(p.mp4Path).size(),
+              QFileInfo(p.gifPath).size());
     }
 
     // Opt-in: writes a 5 s Tilt + Sunset Pop + Flow loop as MP4 and GIF

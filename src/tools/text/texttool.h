@@ -36,6 +36,9 @@ public:
     CaptureTool* copy(QObject* parent = nullptr) override;
 
     void process(QPainter& painter, const QPixmap& pixmap) override;
+    void processReveal(QPainter& painter,
+                       const QPixmap& pixmap,
+                       double progress) override;
     void paintMousePreview(QPainter& painter,
                            const CaptureContext& context) override;
     void move(const QPoint& pos) override;
@@ -73,6 +76,8 @@ private slots:
 
 private:
     void closeEditor();
+    // All of the text (shownLetters < 0) or its first shownLetters letters
+    void paintText(QPainter& painter, int shownLetters);
 
     QFont m_font;
     Qt::AlignmentFlag m_alignment;

@@ -25,6 +25,9 @@ public:
 
     CaptureTool* copy(QObject* parent = nullptr) override;
     void process(QPainter& painter, const QPixmap& pixmap) override;
+    void processReveal(QPainter& painter,
+                       const QPixmap& pixmap,
+                       double progress) override;
 
 protected:
     void copyParams(const ArrowTool* from, ArrowTool* to);
@@ -37,7 +40,20 @@ private slots:
     void setArrowStyle(int style);
 
 private:
-    void processBent(QPainter& painter, const QPoint& start, const QPoint& tip);
+    // Everything the arrow draws: the shaft (a line or a curve), its pen,
+    // and the head at `tip`
+    struct Shape
+    {
+        QPainterPath shaft;
+        QLineF line; // the straight shaft, when not bent
+        bool bent = false;
+        QPen pen;
+        QPainterPath head;
+        QPoint tip;
+        bool straight() const { return !bent; }
+    };
+    Shape shape() const;
+    Shape bentShape(const QPoint& start, const QPoint& tip) const;
 
     enum class ArrowStyle
     {

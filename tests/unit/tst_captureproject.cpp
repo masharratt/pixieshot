@@ -4,6 +4,7 @@
 // serialize -> deserialize and render exactly as before, and bad files must
 // fail cleanly.
 
+#include "fakes/drawobject.h"
 #include "tools/abstracttwopointtool.h"
 #include "tools/capturecontext.h"
 #include "tools/capturetool.h"
@@ -55,58 +56,7 @@ QImage render(const QList<CaptureTool*>& tools)
     return pm.toImage();
 }
 
-CaptureContext context()
-{
-    CaptureContext ctx;
-    ctx.color = QColor(200, 30, 40, 230);
-    ctx.toolSize = 5;
-    ctx.mousePos = QPoint(20, 30);
-    ctx.circleCount = 3;
-    ctx.fullscreen = false;
-    return ctx;
-}
-
-// Draws an object of the given type the way the editor does: press, drag,
-// release, then any tool-specific edit named by `variant`.
-CaptureTool* drawObject(CaptureTool::Type type, const QString& variant)
-{
-    CaptureTool* tool = createDrawableTool(type);
-    if (!tool) {
-        return nullptr;
-    }
-    CaptureContext ctx = context();
-    if (type == CaptureTool::TYPE_TEXT) {
-        tool->drawStart(ctx);
-        QMetaObject::invokeMethod(
-          tool, "updateText", Q_ARG(QString, QStringLiteral("Hello\nworld")));
-        QMetaObject::invokeMethod(tool, "updateFontItalic", Q_ARG(bool, true));
-        QMetaObject::invokeMethod(
-          tool, "updateFontUnderline", Q_ARG(bool, true));
-        QMetaObject::invokeMethod(tool,
-                                  "updateAlignment",
-                                  Q_ARG(Qt::AlignmentFlag, Qt::AlignRight));
-        tool->onSizeChanged(7);
-        tool->drawEnd(QPoint(15, 20));
-        return tool;
-    }
-    tool->drawStart(ctx);
-    if (type == CaptureTool::TYPE_PENCIL || type == CaptureTool::TYPE_MARKER) {
-        tool->drawMove(QPoint(40, 50));
-        tool->drawMove(QPoint(70, 45));
-        tool->drawMove(QPoint(110, 90));
-    } else {
-        tool->drawMove(QPoint(110, 90));
-    }
-    tool->drawEnd(QPoint(110, 90));
-    if (variant == QLatin1String("bent")) {
-        static_cast<AbstractTwoPointTool*>(tool)->setBendHandle(
-          QPointF(90, 30));
-    }
-    if (variant == QLatin1String("curvedHead")) {
-        QMetaObject::invokeMethod(tool, "setArrowStyle", Q_ARG(int, 1));
-    }
-    return tool;
-}
+using testtools::drawObject;
 
 QString typeName(CaptureTool::Type t)
 {

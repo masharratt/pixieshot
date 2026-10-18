@@ -19,6 +19,9 @@ public:
 
     CaptureTool* copy(QObject* parent = nullptr) override;
     void process(QPainter& painter, const QPixmap& pixmap) override;
+    void processReveal(QPainter& painter,
+                       const QPixmap& pixmap,
+                       double progress) override;
 
 protected:
     CaptureTool::Type type() const override;

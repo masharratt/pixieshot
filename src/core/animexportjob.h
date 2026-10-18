@@ -11,6 +11,8 @@
 #include <QSize>
 #include <QString>
 
+#include "utils/annotationlayer.h"
+
 class RecordingControl;
 
 class AnimExportJob : public QObject
@@ -27,17 +29,18 @@ public:
         Failed,
     };
 
-    // Exports `shot` (with its devicePixelRatio) with the current Beautify
-    // and Animate settings. nextTo: a file whose folder and name the export
-    // follows (the saved PNG), or a folder; empty uses the save folder.
-    static void start(const QImage& shot, const QString& nextTo);
+    // Exports `source` (the base with its devicePixelRatio, and its
+    // annotations) with the current Beautify and Animate settings. nextTo: a
+    // file whose folder and name the export follows (the saved PNG), or a
+    // folder; empty uses the save folder. Call on the GUI thread.
+    static void start(const AnimSource& source, const QString& nextTo);
 
     // Free file name next to `nextTo` for an extension (claimed on disk)
     static QString outputPathFor(const QString& nextTo, const QString& extension);
 
 private:
     explicit AnimExportJob(QObject* parent = nullptr);
-    void run(const QImage& shot, const QString& nextTo);
+    void run(const AnimSource& source, const QString& nextTo);
     void finish(bool ok, const QString& error, QSize mp4Size, QSize gifSize);
 
     State m_state = State::Rendering;

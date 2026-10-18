@@ -2,6 +2,9 @@
 // SPDX-FileCopyrightText: 2017-2019 Alejandro Sirgo Rica & Contributors
 
 #include "markertool.h"
+#include "tools/animannotations.h"
+
+#include <QPainterPath>
 
 #include <QPainter>
 
@@ -56,12 +59,33 @@ void MarkerTool::process(QPainter& painter, const QPixmap& pixmap)
     qreal opacity = painter.opacity();
     auto pen = painter.pen();
     painter.setCompositionMode(QPainter::CompositionMode_Multiply);
-    painter.setOpacity(0.35);
+    // Relative, so a fading animation can dim it further
+    painter.setOpacity(opacity * 0.35);
     painter.setPen(QPen(color(), size()));
     painter.drawLine(points().first, points().second);
     painter.setPen(pen);
     painter.setOpacity(opacity);
     painter.setCompositionMode(compositionMode);
+}
+
+// Highlights from the start point to the end
+void MarkerTool::processReveal(QPainter& painter,
+                               const QPixmap& pixmap,
+                               double progress)
+{
+    if (progress <= 0.0 || progress >= 1.0) {
+        CaptureTool::processReveal(painter, pixmap, progress);
+        return;
+    }
+    QPainterPath path(points().first);
+    path.lineTo(points().second);
+    painter.save();
+    painter.setCompositionMode(QPainter::CompositionMode_Multiply);
+    painter.setOpacity(painter.opacity() * 0.35);
+    painter.setPen(QPen(color(), size()));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(animannotations::trimPath(path, progress));
+    painter.restore();
 }
 
 void MarkerTool::paintMousePreview(QPainter& painter,

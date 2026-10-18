@@ -22,6 +22,9 @@ public:
 
     CaptureTool* copy(QObject* parent = nullptr) override;
     void process(QPainter& painter, const QPixmap& pixmap) override;
+    void processReveal(QPainter& painter,
+                       const QPixmap& pixmap,
+                       double progress) override;
     void paintMousePreview(QPainter& painter,
                            const CaptureContext& context) override;
     bool handleMouseWheelEvent(int, bool, CaptureContext& ctx) override;

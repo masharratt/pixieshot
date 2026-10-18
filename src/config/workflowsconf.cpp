@@ -2,6 +2,7 @@
 
 #include "workflowsconf.h"
 #include "config/stylepackrow.h"
+#include "tools/animannotations.h"
 #include "utils/animatedframe.h"
 #include "utils/beautifypalette.h"
 #include "platform/screenrecorder.h"
@@ -10,6 +11,8 @@
 
 #include <QCheckBox>
 #include <QEvent>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QTimer>
 #include <cmath>
 #include <QComboBox>
@@ -100,6 +103,25 @@ QImage animPreviewSample()
     p.setBrush(QColor(236, 72, 96));
     p.drawRoundedRect(QRect(1040, 730, 150, 44), 10, 10);
     return sample;
+}
+
+// Annotations on the sample (a box round the heading, an arrow at the
+// button), stored as a project stores them, so the preview shows them
+// drawing themselves in
+QJsonArray animPreviewObjects()
+{
+    auto object = [](const char* type, const QPoint& p1, const QPoint& p2) {
+        QJsonObject o;
+        o.insert(QStringLiteral("type"), QLatin1String(type));
+        o.insert(QStringLiteral("p1"), QJsonArray{ p1.x(), p1.y() });
+        o.insert(QStringLiteral("p2"), QJsonArray{ p2.x(), p2.y() });
+        o.insert(QStringLiteral("color"), QStringLiteral("#ffe5484d"));
+        o.insert(QStringLiteral("thickness"), 8);
+        return o;
+    };
+    QJsonObject arrow = object("TYPE_ARROW", QPoint(860, 560), QPoint(1030, 726));
+    arrow.insert(QStringLiteral("arrowStyle"), 0);
+    return { object("TYPE_SELECTION", QPoint(274, 64), QPoint(826, 126)), arrow };
 }
 #endif
 
@@ -351,6 +373,14 @@ void WorkflowsConf::addAnimateGroup()
     m_animMotion->setToolTip(tr("How the screenshot itself moves in the loop."));
     form->addRow(tr("Shot motion"), m_animMotion);
 
+    m_animAnnotations = new QComboBox(box);
+    m_animAnnotations->addItem(tr("Draw in order"), int(AnnotationMode::DrawIn));
+    m_animAnnotations->addItem(tr("Static"), int(AnnotationMode::Static));
+    m_animAnnotations->setToolTip(
+      tr("Arrows, boxes and text you added: each draws itself in, in the order "
+         "you made them, or they stay put for the whole loop."));
+    form->addRow(tr("Annotations"), m_animAnnotations);
+
     m_animDuration = new QSpinBox(box);
     m_animDuration->setRange(3, 10);
     m_animDuration->setSuffix(tr(" s"));
@@ -395,7 +425,8 @@ void WorkflowsConf::addAnimateGroup()
     m_animTimer->setInterval(kAnimPreviewIntervalMs);
     connect(m_animTimer, &QTimer::timeout, this, &WorkflowsConf::tickAnimPreview);
 
-    for (QComboBox* combo : { m_animStyle, m_animMotion, m_animFormat }) {
+    for (QComboBox* combo :
+         { m_animStyle, m_animMotion, m_animAnnotations, m_animFormat }) {
         connect(combo,
                 QOverload<int>::of(&QComboBox::currentIndexChanged),
                 this,
@@ -418,6 +449,7 @@ void WorkflowsConf::onAnimChanged()
     ConfigHandler config;
     config.setAnimStyle(m_animStyle->currentData().toInt());
     config.setAnimMotion(m_animMotion->currentData().toInt());
+    config.setAnimAnnotations(m_animAnnotations->currentData().toInt());
     config.setAnimDurationSec(m_animDuration->value());
     config.setAnimFps(m_animFps->value());
     config.setAnimFormat(m_animFormat->currentData().toInt());
@@ -430,6 +462,14 @@ void WorkflowsConf::rebuildAnimPreview()
         return;
     }
     static const QImage sample = animPreviewSample();
+    if (!m_animPreviewAnnotations) {
+        AnimSource source;
+        source.base = sample;
+        source.objects = animPreviewObjects();
+        m_animPreviewAnnotations = animannotations::prepare(source).annotations;
+    }
+    const AnnotationMode annotationMode =
+      animannotations::modeFrom(m_animAnnotations->currentData().toInt());
     const EffectSettings settings = previewSettings();
     const AnimStyle style = animatedbg::styleFrom(m_animStyle->currentData().toInt());
     const auto motion = shotmotion::motionFrom(m_animMotion->currentData().toInt());
@@ -444,6 +484,7 @@ void WorkflowsConf::rebuildAnimPreview()
           animatedbg::kDefaultSeed,
           int(std::lround(logicalWidth * dpr)));
         frames->setMotion(motion, m_animDuration->value());
+        frames->setAnnotations(m_animPreviewAnnotations, annotationMode);
         return frames;
     };
     m_animFrames = build(kAnimPreviewWidth);
@@ -726,6 +767,8 @@ void WorkflowsConf::updateComponents()
       std::max(0, m_animStyle->findData(config.animStyle())));
     m_animMotion->setCurrentIndex(
       std::max(0, m_animMotion->findData(config.animMotion())));
+    m_animAnnotations->setCurrentIndex(
+      std::max(0, m_animAnnotations->findData(config.animAnnotations())));
     m_animDuration->setValue(config.animDurationSec());
     m_animFps->setValue(config.animFps());
     m_animFormat->setCurrentIndex(

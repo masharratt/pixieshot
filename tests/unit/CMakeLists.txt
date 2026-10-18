@@ -30,7 +30,6 @@ flameshot_add_unit_test(tst_actionrunner SOURCES core/actionrunner.cpp core/acti
 flameshot_add_unit_test(tst_hotkeys SOURCES core/hotkeyutils.cpp)
 flameshot_add_unit_test(tst_imageeffects SOURCES utils/imageeffects.cpp utils/beautifylayout.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp utils/autocolors.cpp utils/glassframe.cpp)
 flameshot_add_unit_test(tst_beautifylayout SOURCES utils/beautifylayout.cpp utils/imageeffects.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp utils/autocolors.cpp utils/glassframe.cpp)
-flameshot_add_unit_test(tst_animatedbg SOURCES utils/animatedbg.cpp utils/animatedframe.cpp utils/easing.cpp utils/shotmotion.cpp utils/beautifylayout.cpp utils/imageeffects.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp utils/autocolors.cpp utils/glassframe.cpp)
 flameshot_add_unit_test(tst_easing SOURCES utils/easing.cpp)
 flameshot_add_unit_test(tst_gifquant SOURCES utils/gifquant.cpp)
 flameshot_add_unit_test(tst_recordingstate SOURCES core/recordingstate.cpp)
@@ -50,24 +49,41 @@ flameshot_add_unit_test(tst_scrollstitch SOURCES utils/scrollstitch.cpp)
 flameshot_add_unit_test(tst_outputpath SOURCES utils/outputpath.cpp)
 flameshot_add_unit_test(tst_loginitem SOURCES utils/loginitem.cpp)
 flameshot_add_unit_test(tst_scrollcapturestate SOURCES core/scrollcapturestate.cpp)
-# Every drawable tool, built against an in-memory ConfigHandler so the test
-# never reads or writes the user's settings
-flameshot_add_unit_test(tst_captureproject
-  SOURCES utils/captureproject.cpp tools/drawabletools.cpp tools/toolstate.cpp
-          tools/capturetool.h utils/confighandler.h
-          tools/capturecontext.cpp core/capturerequest.cpp
-          tools/abstracttwopointtool.cpp tools/abstractpathtool.cpp
-          tools/curvemath.cpp tools/ruler/rulermath.cpp
-          tools/arrow/arrowtool.cpp tools/circle/circletool.cpp
-          tools/circlecount/circlecounttool.cpp tools/invert/inverttool.cpp
-          tools/line/linetool.cpp tools/marker/markertool.cpp
-          tools/pencil/penciltool.cpp tools/pixelate/pixelatetool.cpp
-          tools/rectangle/rectangletool.cpp tools/ruler/rulertool.cpp
-          tools/selection/selectiontool.cpp tools/text/texttool.cpp
-          tools/text/textconfig.cpp tools/text/textwidget.cpp
-          utils/colorutils.cpp utils/pathinfo.cpp)
-target_sources(tst_captureproject PRIVATE fakes/fakeconfighandler.cpp)
-target_compile_definitions(tst_captureproject PRIVATE APP_PREFIX="${CMAKE_INSTALL_PREFIX}")
+# Every drawable tool, built against an in-memory ConfigHandler
+# (fakes/fakeconfighandler.cpp) so tests never read or write the user's
+# settings. Shared by the tests that draw real annotations.
+set(_drawable_tool_sources
+    utils/captureproject.cpp tools/drawabletools.cpp tools/toolstate.cpp
+    tools/capturetool.h utils/confighandler.h
+    tools/capturecontext.cpp core/capturerequest.cpp
+    tools/abstracttwopointtool.cpp tools/abstractpathtool.cpp
+    tools/curvemath.cpp tools/ruler/rulermath.cpp
+    tools/arrow/arrowtool.cpp tools/circle/circletool.cpp
+    tools/circlecount/circlecounttool.cpp tools/invert/inverttool.cpp
+    tools/line/linetool.cpp tools/marker/markertool.cpp
+    tools/pencil/penciltool.cpp tools/pixelate/pixelatetool.cpp
+    tools/rectangle/rectangletool.cpp tools/ruler/rulertool.cpp
+    tools/selection/selectiontool.cpp tools/text/texttool.cpp
+    tools/text/textconfig.cpp tools/text/textwidget.cpp
+    tools/animannotations.cpp utils/easing.cpp
+    utils/colorutils.cpp utils/pathinfo.cpp)
+# Animated frames and everything they draw with
+set(_anim_frame_sources
+    utils/animatedbg.cpp utils/animatedframe.cpp utils/animtimeline.cpp
+    utils/shotmotion.cpp utils/beautifylayout.cpp
+    utils/imageeffects.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp
+    utils/autocolors.cpp utils/glassframe.cpp)
+function(flameshot_add_tool_test name)
+  flameshot_add_unit_test(${name} SOURCES ${_drawable_tool_sources} ${ARGN})
+  target_sources(${name} PRIVATE fakes/fakeconfighandler.cpp)
+  target_compile_definitions(${name} PRIVATE APP_PREFIX="${CMAKE_INSTALL_PREFIX}")
+endfunction()
+flameshot_add_tool_test(tst_captureproject)
+flameshot_add_unit_test(tst_animatedbg SOURCES ${_anim_frame_sources} utils/easing.cpp)
+# Draw-itself annotations: timeline, path trimming, each tool's reveal
+flameshot_add_tool_test(tst_animreveal utils/animtimeline.cpp)
+# Design-director check over every style x motion, with and without annotations
+flameshot_add_tool_test(tst_animdirector ${_anim_frame_sources})
 
 if(APPLE)
   # Vision text recognition (Objective-C++, ARC)
@@ -109,7 +125,7 @@ if(APPLE)
     "${CMAKE_SOURCE_DIR}/src/core/recordingedit.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animatedbg.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animatedframe.cpp"
-    "${CMAKE_SOURCE_DIR}/src/utils/easing.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/animtimeline.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/shotmotion.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/gifquant.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/beautifylayout.cpp"
@@ -118,6 +134,12 @@ if(APPLE)
     "${CMAKE_SOURCE_DIR}/src/utils/beautifypalette.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/autocolors.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/glassframe.cpp")
+  # Real annotation tools for the draw-in export (easing comes with them)
+  foreach(src IN LISTS _drawable_tool_sources)
+    target_sources(tst_animexport PRIVATE "${CMAKE_SOURCE_DIR}/src/${src}")
+  endforeach()
+  target_sources(tst_animexport PRIVATE fakes/fakeconfighandler.cpp fakes/annotatedsample.cpp)
+  target_compile_definitions(tst_animexport PRIVATE APP_PREFIX="${CMAKE_INSTALL_PREFIX}")
   target_include_directories(tst_animexport PRIVATE "${CMAKE_SOURCE_DIR}/src")
   target_link_libraries(tst_animexport PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Test
     "-framework AVFoundation" "-framework CoreMedia" "-framework CoreVideo"

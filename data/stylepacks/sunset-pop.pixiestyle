@@ -21,6 +21,7 @@
         "effectShadow": true,
         "effectPalette": "#ffd601,#ff6118,#ee30fb,#fb76fa,#7232f1",
         "animMotion": 1,
+        "animAnnotations": 1,
         "animDurationSec": 5
     }
 }

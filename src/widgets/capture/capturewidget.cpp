@@ -2616,41 +2616,49 @@ void CaptureWidget::handleAnimateRequest()
         }
         beautifyIsNewest = beautify != nullptr && cmd == beautify;
     }
-    const qreal dpr = m_context.origScreenshot.devicePixelRatio();
-    QImage base;
+    AnimSource source;
     switch (animateBaseFor(beautify != nullptr, beautifyIsNewest, canvasChangedSince)) {
         case AnimateBase::BeforeBeautify:
-            base = flattenEditState(beautify->before());
+            source = animSourceOf(beautify->before(), QRect());
             break;
         case AnimateBase::BeautifiedShot:
-            base = flattenEditState(currentEditCanvasState())
-                     .copy(beautify->shotSource());
+            source = animSourceOf(currentEditCanvasState(), beautify->shotSource());
             break;
         case AnimateBase::CurrentImage:
-            base = flattenEditState(currentEditCanvasState());
+            source = animSourceOf(currentEditCanvasState(), QRect());
             break;
     }
-    base.setDevicePixelRatio(dpr);
 #if defined(Q_OS_MACOS)
-    AnimExportJob::start(base, m_context.request.path());
+    AnimExportJob::start(source, m_context.request.path());
 #endif
 }
 
-QImage CaptureWidget::flattenEditState(const EditCanvasState& state)
+AnimSource CaptureWidget::animSourceOf(const EditCanvasState& state,
+                                       const QRect& crop)
 {
-    // The annotations drawn on the canvas, without selection outlines
-    QPixmap canvas = state.canvas;
+    // The canvas holds the image without annotations; they stay objects,
+    // stored relative to the part of the image Animate starts from
+    const qreal dpr = state.canvas.devicePixelRatio();
+    QRect device = state.imageDevice;
+    if (!crop.isNull()) {
+        device = crop.translated(state.imageDevice.topLeft())
+                   .intersected(state.imageDevice);
+    }
+    AnimSource source;
+    source.base = state.canvas.copy(device).toImage();
+    source.base.setDevicePixelRatio(dpr);
+    source.dpr = dpr;
     // Not copy-constructible; assignment copies the tool list
     CaptureToolObjects objects;
     objects = state.objects;
-    for (const auto& tool : objects.captureToolObjects()) {
-        if (tool) {
-            processPixmapWithTool(&canvas, tool);
-        }
-    }
-    QImage image = canvas.copy(state.imageDevice).toImage();
-    image.setDevicePixelRatio(state.canvas.devicePixelRatio());
-    return image;
+    const QPoint origin =
+      state.imageLogical.topLeft() + (QPointF(device.topLeft() -
+                                              state.imageDevice.topLeft()) /
+                                      dpr)
+                                       .toPoint();
+    source.objects =
+      captureproject::encodeObjects(objects.captureToolObjects(), -origin);
+    return source;
 }
 
 // The result matches what Accept + Beautify exports from the overlay: the

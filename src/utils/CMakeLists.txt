@@ -39,6 +39,7 @@ target_sources(
           animatedframe.cpp
           easing.cpp
           shotmotion.cpp
+          animtimeline.cpp
           beautifypalette.cpp
           gifquant.cpp
           scrollstitch.cpp

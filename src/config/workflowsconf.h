@@ -14,6 +14,7 @@
 #include <memory>
 
 class AnimatedFrames;
+class AnnotationLayer;
 class QTimer;
 
 class QCheckBox;
@@ -93,6 +94,9 @@ private:
 #if defined(Q_OS_MACOS)
     QComboBox* m_animStyle = nullptr;
     QComboBox* m_animMotion = nullptr;
+    QComboBox* m_animAnnotations = nullptr;
+    // The preview's sample annotations, built once
+    std::shared_ptr<AnnotationLayer> m_animPreviewAnnotations;
     QSpinBox* m_animDuration = nullptr;
     QSpinBox* m_animFps = nullptr;
     QComboBox* m_animFormat = nullptr;

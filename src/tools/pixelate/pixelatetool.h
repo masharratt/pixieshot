@@ -18,6 +18,8 @@ public:
 
     CaptureTool* copy(QObject* parent = nullptr) override;
     void process(QPainter& painter, const QPixmap& pixmap) override;
+    // A filter over the pixels underneath: never animated
+    bool animatesIn() const override { return false; }
     void drawSearchArea(QPainter& painter, const QPixmap& pixmap) override;
     void paintMousePreview(QPainter& painter,
                            const CaptureContext& context) override;

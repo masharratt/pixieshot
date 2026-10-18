@@ -179,6 +179,30 @@ public:
 
     // Called every time the tool has to draw
     virtual void process(QPainter& painter, const QPixmap& pixmap) = 0;
+    // "Animate" draw-in: the object `progress` (0..1) of the way through
+    // its reveal, 1 being exactly process(). The default fades the whole
+    // object in; strokes, outlines, text and counters override it. Keeps the
+    // painter's opacity as it found it.
+    virtual void processReveal(QPainter& painter,
+                               const QPixmap& pixmap,
+                               double progress)
+    {
+        if (progress <= 0.0) {
+            return;
+        }
+        if (progress >= 1.0) {
+            process(painter, pixmap);
+            return;
+        }
+        const qreal opacity = painter.opacity();
+        painter.setOpacity(opacity * progress);
+        process(painter, pixmap);
+        painter.setOpacity(opacity);
+    }
+    // False for filters over the pixels underneath (pixelate, invert): in an
+    // animation they are part of the base for the whole loop, so what they
+    // hide is never shown
+    virtual bool animatesIn() const { return true; }
     virtual void drawSearchArea(QPainter& painter, const QPixmap& pixmap)
     {
         process(painter, pixmap);

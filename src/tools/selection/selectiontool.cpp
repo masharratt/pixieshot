@@ -2,6 +2,9 @@
 // SPDX-FileCopyrightText: 2017-2019 Alejandro Sirgo Rica & Contributors
 
 #include "selectiontool.h"
+#include "tools/animannotations.h"
+
+#include <QPainterPath>
 
 #include <QPainter>
 
@@ -49,6 +52,23 @@ void SelectionTool::process(QPainter& painter, const QPixmap& pixmap)
     painter.setPen(
       QPen(color(), size(), Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
     painter.drawRect(QRect(points().first, points().second));
+}
+
+// The outline draws itself around, clockwise from the top-left corner
+void SelectionTool::processReveal(QPainter& painter,
+                                  const QPixmap& pixmap,
+                                  double progress)
+{
+    if (progress <= 0.0 || progress >= 1.0) {
+        CaptureTool::processReveal(painter, pixmap, progress);
+        return;
+    }
+    QPainterPath path;
+    path.addRect(QRectF(QRect(points().first, points().second)));
+    painter.setPen(
+      QPen(color(), size(), Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(animannotations::trimPath(path, progress));
 }
 
 void SelectionTool::pressed(CaptureContext& context)

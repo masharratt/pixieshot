@@ -23,7 +23,7 @@ public:
     void move(const QPoint& pos) override;
     const QPoint* pos() override;
     int size() const override { return m_thickness; };
-    const QColor& color() { return m_color; };
+    const QColor& color() const { return m_color; };
     const QPair<QPoint, QPoint> points() const { return m_points; };
     void paintMousePreview(QPainter& painter,
                            const CaptureContext& context) override;

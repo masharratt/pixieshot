@@ -5,6 +5,7 @@
 #pragma once
 
 #include "utils/animatedbg.h"
+#include "utils/annotationlayer.h"
 #include "utils/imageeffects.h"
 #include "utils/shotmotion.h"
 
@@ -13,6 +14,7 @@
 #include <QString>
 
 #include <functional>
+#include <memory>
 
 // cfn: MP4 long side capped at 1920 (frames are scaled down to fit), raise
 // it if people ask for 4K loops; render time and file size grow with area
@@ -25,6 +27,10 @@ inline constexpr int kAnimGifMaxFps = 15;
 struct AnimExportParams
 {
     QImage shot; // the capture, its devicePixelRatio sizes the effects
+    // Annotations on the shot (null: none); built on the GUI thread by
+    // animannotations::prepare, then only drawn with here
+    std::shared_ptr<AnnotationLayer> annotations;
+    AnnotationMode annotationMode = AnnotationMode::DrawIn;
     EffectSettings effects;
     AnimStyle style = AnimStyle::Aurora;
     ShotMotion motion = ShotMotion::None;

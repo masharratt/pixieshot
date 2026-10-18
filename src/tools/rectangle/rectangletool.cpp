@@ -74,6 +74,24 @@ void RectangleTool::drawStart(const CaptureContext& context)
     onSizeChanged(context.toolSize);
 }
 
+// A filled box has no outline to trace: it wipes in from the left
+void RectangleTool::processReveal(QPainter& painter,
+                                  const QPixmap& pixmap,
+                                  double progress)
+{
+    if (progress <= 0.0 || progress >= 1.0) {
+        CaptureTool::processReveal(painter, pixmap, progress);
+        return;
+    }
+    const QRect box = boundingRect();
+    painter.save();
+    painter.setClipRect(
+      QRectF(box.left(), box.top(), box.width() * progress, box.height()),
+      Qt::IntersectClip);
+    process(painter, pixmap);
+    painter.restore();
+}
+
 void RectangleTool::pressed(CaptureContext& context)
 {
     Q_UNUSED(context)

@@ -85,6 +85,7 @@ Mp4Result writeMp4(const AnimExportParams& p,
     AnimatedFrames frames(
       p.shot, p.effects, p.style, p.seed, kAnimMp4MaxLongSide, true);
     frames.setMotion(p.motion, p.durationSec);
+    frames.setAnnotations(p.annotations, p.annotationMode);
     const QSize px = frames.size();
     *size = px;
     const int fps = std::clamp(p.fps, 1, 120);
@@ -230,6 +231,7 @@ bool writeGif(const AnimExportParams& p,
     AnimatedFrames frames(
       p.shot, effects, p.style, p.seed, kAnimGifMaxLongSide, false);
     frames.setMotion(p.motion, p.durationSec);
+    frames.setAnnotations(p.annotations, p.annotationMode);
     *size = frames.size();
     const int count = animFrameCount(p.durationSec, animGifFps(p.fps));
     *frameCount = count;
@@ -240,7 +242,8 @@ bool writeGif(const AnimExportParams& p,
     for (double phase : { 0.0, 0.25, 0.5, 0.75 }) {
         samples += gifquant::samplePixels(frames.frame(phase), kSamplesPerSource);
     }
-    samples += gifquant::samplePixels(frames.shotLayer(), 4 * kSamplesPerSource);
+    // The shot as in the hold, so annotation colours get palette entries
+    samples += gifquant::samplePixels(frames.shotLayerShown(), 4 * kSamplesPerSource);
     const gifquant::Palette palette = gifquant::Palette::fromSamples(samples);
     QByteArray table;
     for (QRgb c : palette.colors()) {
@@ -269,8 +272,7 @@ bool writeGif(const AnimExportParams& p,
             const QImage indexed = gifquant::quantize(
               frames.frame(phase),
               palette,
-              frames.shotBounds(
-                shotmotion::poseAt(p.motion, phase, p.durationSec)));
+              frames.shotBounds(frames.poseAt(phase)));
             CGImageRef image = indexedImage(indexed, space);
             if (image == NULL) {
                 *error = QStringLiteral("Could not make a GIF frame.");

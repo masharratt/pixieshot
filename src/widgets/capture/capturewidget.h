@@ -13,6 +13,7 @@
 
 #include "tools/capturecontext.h"
 #include "tools/capturetool.h"
+#include "utils/annotationlayer.h"
 #include "utils/captureproject.h"
 #include "utils/confighandler.h"
 #include "platform/windowlist.h"
@@ -202,8 +203,10 @@ private:
     void handleBeautifyRequest();
     // Animate button: finish and export (overlay) or export in place
     void handleAnimateRequest();
-    // The image of an editor state with its annotations, selection-free
-    QImage flattenEditState(const EditCanvasState& state);
+    // What Animate starts from in an editor state: the image without its
+    // annotations, cut to `crop` (device pixels inside the image; null for
+    // all of it), and the annotations as objects relative to that
+    AnimSource animSourceOf(const EditCanvasState& state, const QRect& crop);
     void drawPickerSizeLabel(QPainter* painter);
     void selectHoveredWindow();
     void drawToolsData(bool drawSelection = true);

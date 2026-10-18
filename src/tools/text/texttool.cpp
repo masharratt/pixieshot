@@ -7,6 +7,9 @@
 #include "tools/toolstate.h"
 #include "utils/confighandler.h"
 
+#include <QRegion>
+#include <cmath>
+
 #define BASE_POINT_SIZE 8
 #define MAX_INFO_LENGTH 24
 
@@ -203,6 +206,25 @@ CaptureTool* TextTool::copy(QObject* parent)
 void TextTool::process(QPainter& painter, const QPixmap& pixmap)
 {
     Q_UNUSED(pixmap)
+    paintText(painter, -1);
+}
+
+// Types in: the first characters appear, line by line, at the places they
+// have in the finished text (the layout never shifts)
+void TextTool::processReveal(QPainter& painter,
+                             const QPixmap& pixmap,
+                             double progress)
+{
+    if (progress <= 0.0 || progress >= 1.0) {
+        CaptureTool::processReveal(painter, pixmap, progress);
+        return;
+    }
+    const qsizetype letters = m_text.size() - m_text.count(QLatin1Char('\n'));
+    paintText(painter, int(std::lround(progress * letters)));
+}
+
+void TextTool::paintText(QPainter& painter, int shownLetters)
+{
     if (m_text.isEmpty()) {
         return;
     }
@@ -214,12 +236,41 @@ void TextTool::process(QPainter& painter, const QPixmap& pixmap)
     fontsize.setWidth(fontsize.width() + val * 2);
     fontsize.setHeight(fontsize.height() + val * 2);
     m_textArea.setSize(fontsize);
+    const QRect area = m_textArea + QMargins(-val, -val, val, val);
     // draw text
     painter.setFont(m_font);
     painter.setPen(m_color);
-    if (!editMode()) {
-        painter.drawText(
-          m_textArea + QMargins(-val, -val, val, val), m_alignment, m_text);
+    if (!editMode() && shownLetters != 0) {
+        painter.save();
+        if (shownLetters > 0) {
+            // Clip to the typed part of each line
+            QRegion typed;
+            const QStringList lines = m_text.split(QLatin1Char('\n'));
+            const int lineHeight = fm.lineSpacing();
+            int left = shownLetters;
+            for (int i = 0; i < lines.size() && left > 0; ++i) {
+                const QString& line = lines[i];
+                const int full = fm.horizontalAdvance(line);
+                int x = area.left();
+                if (m_alignment & Qt::AlignRight) {
+                    x = area.right() + 1 - full;
+                } else if (m_alignment & Qt::AlignHCenter) {
+                    x = area.left() + (area.width() - full) / 2;
+                }
+                const int n = std::min<int>(left, line.size());
+                left -= n;
+                const int width = fm.horizontalAdvance(line.left(n)) +
+                                  (n == line.size() ? val : 0);
+                const int top = area.top() + i * lineHeight;
+                const int bottom =
+                  i == lines.size() - 1 ? area.bottom() + val : top + lineHeight;
+                typed += QRect(x - val, top - (i == 0 ? val : 0), width + val,
+                               bottom - top + (i == 0 ? val : 0));
+            }
+            painter.setClipRegion(typed, Qt::IntersectClip);
+        }
+        painter.drawText(area, m_alignment, m_text);
+        painter.restore();
     }
     painter.setFont(orig_font);
     painter.setPen(orig_pen);

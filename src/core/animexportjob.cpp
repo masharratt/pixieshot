@@ -4,6 +4,7 @@
 #include "core/flameshot.h"
 #include "core/flameshotdaemon.h"
 #include "platform/animexport.h"
+#include "tools/animannotations.h"
 #include "utils/abstractlogger.h"
 #include "utils/confighandler.h"
 #include "utils/filenamehandler.h"
@@ -28,14 +29,14 @@ AnimExportJob::AnimExportJob(QObject* parent)
   : QObject(parent)
 {}
 
-void AnimExportJob::start(const QImage& shot, const QString& nextTo)
+void AnimExportJob::start(const AnimSource& source, const QString& nextTo)
 {
-    if (shot.isNull()) {
+    if (source.base.isNull()) {
         return;
     }
     // Owned by the app until it finishes, then deletes itself
     auto* job = new AnimExportJob(QCoreApplication::instance());
-    job->run(shot, nextTo);
+    job->run(source, nextTo);
 }
 
 QString AnimExportJob::outputPathFor(const QString& nextTo, const QString& extension)
@@ -57,11 +58,16 @@ QString AnimExportJob::outputPathFor(const QString& nextTo, const QString& exten
     });
 }
 
-void AnimExportJob::run(const QImage& shot, const QString& nextTo)
+void AnimExportJob::run(const AnimSource& source, const QString& nextTo)
 {
     ConfigHandler config;
     AnimExportParams params;
-    params.shot = shot;
+    // Tools decode and pixelate here, on the GUI thread; the worker only
+    // draws with the prepared layer
+    const PreparedAnimSource prepared = animannotations::prepare(source);
+    params.shot = prepared.base;
+    params.annotations = prepared.annotations;
+    params.annotationMode = animannotations::modeFrom(config.animAnnotations());
     params.effects = config.effectSettings();
     params.style = animatedbg::styleFrom(config.animStyle());
     params.motion = shotmotion::motionFrom(config.animMotion());
