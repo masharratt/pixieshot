@@ -32,6 +32,13 @@ public:
                                  const QString& kind,
                                  const QString& editSource,
                                  int seconds);
+    // Toast for an "Animate" output: like a recording, but Edit reopens the
+    // capture editor from projectPath (annotations movable). With no
+    // projectPath there is no Edit. Returns false when seconds <= 0.
+    static bool showForAnimation(const QString& path,
+                                 const QString& kind,
+                                 const QString& projectPath,
+                                 int seconds);
 
 protected:
     void enterEvent(QEnterEvent* event) override;
@@ -48,6 +55,11 @@ private:
                  bool recording = false);
 
     static void restack();
+    // A recording-style toast for a saved video or GIF, not shown yet
+    static CaptureToast* createForVideo(const QString& path,
+                                        const QString& kind,
+                                        int seconds);
+    void showStacked();
     void openFromThumbnail();
 
     QString m_path;
@@ -60,6 +72,7 @@ private:
     bool m_recording = false;
     QString m_kind;       // recordings: "mp4" or "gif"
     QString m_editSource; // recordings: MP4 to edit from, until handed off
+    QString m_projectPath; // Animate output: the project Edit opens
 
     // Newest first, matching toastStackGeometry()
     static QList<QPointer<CaptureToast>> s_toasts;

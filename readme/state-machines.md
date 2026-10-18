@@ -1,6 +1,6 @@
 # State Machines
 
-**Last Updated:** 2026-10-18 (animated background export job)
+**Last Updated:** 2026-10-18 (Animate preview dialog; Animate output keeps a project)
 
 ## 1. Capture Overlay
 
@@ -235,7 +235,7 @@ stateDiagram-v2
 | State | Meaning |
 |-------|---------|
 | Rendering | Output names reserved; each frame is rendered and handed to the encoder (MP4, then GIF) on a worker thread; a progress pill shows the percentage. |
-| Saved | Every requested file written; each gets a history entry and a toast, and the first file's URL is copied. |
+| Saved | Every requested file written; each gets its own capture project (base, annotations, Animate and effect settings), a history entry and a toast with Edit, and the first file's URL is copied. |
 | Failed | An encoder or file error; partial and placeholder files are removed and the error is logged. |
 
 ### Transitions
@@ -254,4 +254,44 @@ stateDiagram-v2
   Rendering --> Failed
   Saved --> [*]
   Failed --> [*]
+```
+
+## 7. Animate Preview
+
+**Source:** `src/widgets/animpreviewdialog.cpp` (`AnimPreviewDialog`), opened by `CaptureWidget::handleAnimateRequest` and finished by `CaptureWidget::exportAnimation` in `src/widgets/capture/capturewidget.cpp`.
+
+### States
+| State | Meaning |
+|-------|---------|
+| Playing | Window-modal dialog over the editor or overlay; the loop plays in real time from the export's own frames, drawn smaller. |
+| Paused | The same, holding one frame. |
+| Exported | Export pressed: the style, motion and format become the saved choice and an Animated Background Export starts (the overlay first finishes its capture). |
+| Cancelled | Cancel, Esc or close: nothing is written and the editor or overlay is exactly as before. |
+
+### Transitions
+| From | To | Trigger | Guard |
+|------|----|---------|-------|
+| Playing | Paused | Pause button | none |
+| Paused | Playing | Play button | none |
+| Playing | Playing | Style, motion or format changed | frames rebuilt at the same phase |
+| Paused | Paused | Style, motion or format changed | frames rebuilt at the same phase |
+| Playing | Exported | Export button | none |
+| Paused | Exported | Export button | none |
+| Playing | Cancelled | Cancel, Esc or window close | none |
+| Paused | Cancelled | Cancel, Esc or window close | none |
+
+The dialog opens Playing, preset from the reopened output's Animate settings when the editor came from an Animate toast or history entry, otherwise from the saved choice. It deletes itself on close.
+
+### Diagram
+```mermaid
+stateDiagram-v2
+  [*] --> Playing
+  Playing --> Paused
+  Paused --> Playing
+  Playing --> Exported
+  Paused --> Exported
+  Playing --> Cancelled
+  Paused --> Cancelled
+  Exported --> [*]
+  Cancelled --> [*]
 ```

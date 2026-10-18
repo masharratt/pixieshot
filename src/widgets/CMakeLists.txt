@@ -72,7 +72,13 @@ target_sources(
         orientablepushbutton.cpp
         colorpickerwidget.cpp
         capture/capturetoolobjects.cpp
+        animpickers.cpp
 )
+
+if (APPLE)
+    # Animate preview (frames from the macOS export's params)
+    target_sources(flameshot PRIVATE animpreviewdialog.h animpreviewdialog.cpp)
+endif ()
 
 if (ENABLE_IMGUR)
 target_sources(

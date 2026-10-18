@@ -8,6 +8,7 @@
 #include "platform/animexport.h"
 #include "platform/macos/gifwriter.h"
 #include "utils/animatedframe.h"
+#include "utils/animrender.h"
 #include "utils/gifquant.h"
 
 #include <QCoreApplication>
@@ -82,10 +83,7 @@ Mp4Result writeMp4(const AnimExportParams& p,
                    QSize* size,
                    QString* error)
 {
-    AnimatedFrames frames(
-      p.shot, p.effects, p.style, p.seed, kAnimMp4MaxLongSide, true);
-    frames.setMotion(p.motion, p.durationSec);
-    frames.setAnnotations(p.annotations, p.annotationMode);
+    const AnimatedFrames frames = animFramesFor(p, AnimTarget::Mp4);
     const QSize px = frames.size();
     *size = px;
     const int fps = std::clamp(p.fps, 1, 120);
@@ -224,14 +222,8 @@ bool writeGif(const AnimExportParams& p,
               int* frameCount,
               QString* error)
 {
-    // No grain: the ordered dither already breaks up banding, and noise
-    // defeats the GIF's LZW compression (it roughly doubles the file)
-    EffectSettings effects = p.effects;
-    effects.grain = 0;
-    AnimatedFrames frames(
-      p.shot, effects, p.style, p.seed, kAnimGifMaxLongSide, false);
-    frames.setMotion(p.motion, p.durationSec);
-    frames.setAnnotations(p.annotations, p.annotationMode);
+    // No grain (see animFramesFor): noise defeats the GIF's LZW compression
+    const AnimatedFrames frames = animFramesFor(p, AnimTarget::Gif);
     *size = frames.size();
     const int count = animFrameCount(p.durationSec, animGifFps(p.fps));
     *frameCount = count;

@@ -6,14 +6,18 @@
 #include "platform/animexport.h"
 #include "tools/animannotations.h"
 #include "utils/abstractlogger.h"
+#include "utils/capturehistory.h"
+#include "utils/captureproject.h"
 #include "utils/confighandler.h"
 #include "utils/filenamehandler.h"
 #include "utils/outputpath.h"
+#include "utils/stylepack.h"
 #include "widgets/recordingcontrol.h"
 
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonObject>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QStandardPaths>
@@ -29,14 +33,54 @@ AnimExportJob::AnimExportJob(QObject* parent)
   : QObject(parent)
 {}
 
-void AnimExportJob::start(const AnimSource& source, const QString& nextTo)
+void AnimExportJob::start(const AnimSource& source,
+                          const QString& nextTo,
+                          const AnimChoice& choice)
 {
     if (source.base.isNull()) {
         return;
     }
     // Owned by the app until it finishes, then deletes itself
     auto* job = new AnimExportJob(QCoreApplication::instance());
-    job->run(source, nextTo);
+    job->run(source, nextTo, choice);
+}
+
+void AnimExportJob::start(const AnimSource& source, const QString& nextTo)
+{
+    start(source, nextTo, configuredChoice());
+}
+
+AnimChoice AnimExportJob::configuredChoice()
+{
+    ConfigHandler config;
+    AnimChoice choice;
+    choice.style = config.animStyle();
+    choice.motion = config.animMotion();
+    choice.format = config.animFormat();
+    return choice;
+}
+
+void AnimExportJob::rememberChoice(const AnimChoice& choice)
+{
+    ConfigHandler config;
+    config.setAnimStyle(choice.style);
+    config.setAnimMotion(choice.motion);
+    config.setAnimFormat(choice.format);
+}
+
+AnimRenderParams AnimExportJob::paramsFor(const PreparedAnimSource& prepared,
+                                          const AnimChoice& choice)
+{
+    ConfigHandler config;
+    AnimRenderParams params;
+    params.shot = prepared.base;
+    params.annotations = prepared.annotations;
+    params.annotationMode = animannotations::modeFrom(config.animAnnotations());
+    params.effects = config.effectSettings();
+    params.style = animatedbg::styleFrom(choice.style);
+    params.motion = shotmotion::motionFrom(choice.motion);
+    params.durationSec = config.animDurationSec();
+    return params;
 }
 
 QString AnimExportJob::outputPathFor(const QString& nextTo, const QString& extension)
@@ -58,22 +102,19 @@ QString AnimExportJob::outputPathFor(const QString& nextTo, const QString& exten
     });
 }
 
-void AnimExportJob::run(const AnimSource& source, const QString& nextTo)
+void AnimExportJob::run(const AnimSource& source,
+                        const QString& nextTo,
+                        const AnimChoice& choice)
 {
-    ConfigHandler config;
+    m_source = source;
+    m_choice = choice;
     AnimExportParams params;
     // Tools decode and pixelate here, on the GUI thread; the worker only
     // draws with the prepared layer
-    const PreparedAnimSource prepared = animannotations::prepare(source);
-    params.shot = prepared.base;
-    params.annotations = prepared.annotations;
-    params.annotationMode = animannotations::modeFrom(config.animAnnotations());
-    params.effects = config.effectSettings();
-    params.style = animatedbg::styleFrom(config.animStyle());
-    params.motion = shotmotion::motionFrom(config.animMotion());
-    params.durationSec = config.animDurationSec();
-    params.fps = config.animFps();
-    const int format = config.animFormat();
+    static_cast<AnimRenderParams&>(params) =
+      paramsFor(animannotations::prepare(source), choice);
+    params.fps = ConfigHandler().animFps();
+    const int format = choice.format;
     if (format == 0 || format == 2) {
         m_mp4 = outputPathFor(nextTo, QStringLiteral("mp4"));
         params.mp4Path = m_mp4;
@@ -134,18 +175,43 @@ void AnimExportJob::finish(bool ok,
         return;
     }
     m_state = State::Saved;
-    // History entry and toast like a recording. The MP4 is its own edit
-    // source; a GIF has none (the toast hides Edit).
+    // History entry and toast. Each file gets its own copy of the project
+    // (the history deletes a project with its entry), and Edit on the toast
+    // reopens the editor from it.
     if (!m_mp4.isEmpty()) {
-        emit Flameshot::instance()->recordingSaved(
-          m_mp4, QStringLiteral("mp4"), mp4Size, m_mp4);
+        emit Flameshot::instance()->animationSaved(
+          m_mp4, QStringLiteral("mp4"), mp4Size, storeProject());
     }
     if (!m_gif.isEmpty()) {
-        emit Flameshot::instance()->recordingSaved(
-          m_gif, QStringLiteral("gif"), gifSize, QString());
+        emit Flameshot::instance()->animationSaved(
+          m_gif, QStringLiteral("gif"), gifSize, storeProject());
     }
     const QString copied = !m_mp4.isEmpty() ? m_mp4 : m_gif;
     FlameshotDaemon::copyToClipboard(QUrl::fromLocalFile(copied).toString(),
                                      tr("Animation saved, file URL copied."));
     deleteLater();
+}
+
+QString AnimExportJob::storeProject() const
+{
+    CaptureProject project;
+    project.base = m_source.base;
+    project.base.setDevicePixelRatio(m_source.dpr);
+    project.objects = m_source.objects;
+    // Every Animate and Beautify setting this export used
+    project.anim = QJsonObject::fromVariantMap(
+      stylepack::fromCurrentConfig(QString()).settings);
+    writeAnimChoice(project.anim, m_choice);
+    // cfn: synchronous PNG encode on the UI thread after each Animate export,
+    // move to a worker thread if large captures make the toast lag
+    QString error;
+    const QString path = captureproject::saveInFolder(
+      CaptureHistory(CaptureHistory::defaultIndexPath()).projectDir(),
+      project,
+      &error);
+    if (path.isEmpty()) {
+        AbstractLogger::warning(AbstractLogger::Stderr)
+          << tr("Could not keep this animation editable: %1").arg(error);
+    }
+    return path;
 }

@@ -37,6 +37,7 @@ target_sources(
           glassframe.cpp
           animatedbg.cpp
           animatedframe.cpp
+          animrender.cpp
           easing.cpp
           shotmotion.cpp
           animtimeline.cpp

@@ -4,6 +4,7 @@
 
 #include <QImage>
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QList>
 #include <QPoint>
 #include <QPointer>
@@ -26,14 +27,19 @@ struct CaptureProject
     // The saved file was Beautified on export while this base is not (the
     // effect is not part of the base), so editing again must re-apply it
     bool beautified = false;
+    // "Animate" output: the settings it was made with (ConfigHandler keys,
+    // the anim* and effect* style keys). Empty for a still capture.
+    QJsonObject anim;
 
     bool isEmpty() const { return base.isNull(); }
+    bool isAnimation() const { return !anim.isEmpty(); }
 };
 
 // Single file: a small binary header, then the JSON (UTF-8) and the base
 // image as PNG, each length-prefixed (QDataStream, Qt 6.0 format):
 //   quint32 kMagic, quint32 format version, QByteArray json, QByteArray png
-// The JSON is { "dpr": number, "objects": [ { "type": "TYPE_ARROW", ... } ] }.
+// The JSON is { "dpr": number, "objects": [ { "type": "TYPE_ARROW", ... } ],
+// "beautified": bool, "anim": { ... } } ("anim" only for Animate output).
 namespace captureproject {
 
 constexpr quint32 kMagic = 0x46535052; // "FSPR"
@@ -64,5 +70,10 @@ bool decode(const QByteArray& bytes, CaptureProject& out, QString* error);
 
 bool save(const QString& path, const CaptureProject& project, QString* error);
 bool load(const QString& path, CaptureProject& out, QString* error);
+// Saves under a new unique name in `folder` (created if needed); the file
+// path, or empty with *error on failure
+QString saveInFolder(const QString& folder,
+                     const CaptureProject& project,
+                     QString* error);
 
 } // namespace captureproject
