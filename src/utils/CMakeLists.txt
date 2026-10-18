@@ -35,6 +35,8 @@ target_sources(
           autocolors.cpp
           glassframe.cpp
           scrollstitch.cpp
+          loginitem.cpp
+          outputpath.cpp
 )
 
 IF (UNIX AND NOT APPLE)

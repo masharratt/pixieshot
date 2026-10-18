@@ -16,6 +16,12 @@ inline QString displayName()
 {
     return QStringLiteral("Pixieshot");
 }
+// Single-instance key. Not the old "org.flameshot.Flameshot", so a leftover
+// Flameshot.app that is still running cannot swallow Pixieshot's launch.
+inline QString singleInstanceKey()
+{
+    return QStringLiteral("org.pixieshot.Pixieshot");
+}
 inline void apply()
 {
     QCoreApplication::setApplicationName(settingsName());

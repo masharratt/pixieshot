@@ -9,6 +9,7 @@ target_sources(flameshot PRIVATE
     videoedit.h
     videopreview.h
     windowspace.h
+    screenaccess.h
 )
 
 if (APPLE)
@@ -25,6 +26,7 @@ if (APPLE)
         macos/videoedit.mm
         macos/videopreview.mm
         macos/windowspace_mac.mm
+        macos/screenaccess_mac.mm
         macos/textrecognition.h
         macos/textrecognition.mm
     )
@@ -52,5 +54,5 @@ if (APPLE)
     )
 else ()
     target_sources(flameshot PRIVATE windowlist_stub.cpp recording_stub.cpp
-        windowspace_stub.cpp scrollcapture_stub.cpp)
+        windowspace_stub.cpp scrollcapture_stub.cpp screenaccess_stub.cpp)
 endif ()

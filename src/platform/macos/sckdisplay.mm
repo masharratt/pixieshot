@@ -39,14 +39,24 @@ SCKDisplayArea sckDisplayArea(SCShareableContent* content, CGRect globalLogical)
             qRound(display.frame.size.width),
             qRound(display.frame.size.height)));
 
-    result.scale = 0;
-    for (NSScreen* screen in NSScreen.screens) {
-        NSNumber* number = screen.deviceDescription[@"NSScreenNumber"];
-        if (number.unsignedIntValue == display.displayID) {
-            result.scale = screen.backingScaleFactor;
-            break;
+    // AppKit is main-thread only; this runs on a ScreenCaptureKit queue
+    __block double scale = 0;
+    const CGDirectDisplayID displayID = display.displayID;
+    void (^lookup)(void) = ^{
+        for (NSScreen* screen in NSScreen.screens) {
+            NSNumber* number = screen.deviceDescription[@"NSScreenNumber"];
+            if (number.unsignedIntValue == displayID) {
+                scale = screen.backingScaleFactor;
+                break;
+            }
         }
+    };
+    if ([NSThread isMainThread]) {
+        lookup();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), lookup);
     }
+    result.scale = scale;
     return result;
 }
 

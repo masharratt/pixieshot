@@ -4,6 +4,7 @@
 #include "confighandler.h"
 #include "tools/capturetool.h"
 #include "utils/abstractlogger.h"
+#include "utils/loginitem.h"
 #include "utils/valuehandler.h"
 #include "widgets/thumbnailgesture.h"
 
@@ -27,7 +28,9 @@
 
 bool verifyLaunchFile()
 {
-#if defined(Q_OS_UNIX)
+#if defined(Q_OS_MACOS)
+    bool res = loginitem::exists();
+#elif defined(Q_OS_UNIX)
     QString path = QStandardPaths::locate(QStandardPaths::GenericConfigLocation,
                                           "autostart/",
                                           QStandardPaths::LocateDirectory) +
@@ -331,37 +334,20 @@ bool ConfigHandler::startupLaunch()
 
 void ConfigHandler::setStartupLaunch(const bool start)
 {
-    if (start == value(QStringLiteral("startupLaunch")).toBool()) {
+    // Also checks the real login item: the stored flag can say "on" while
+    // the item is missing (upgrade from the Flameshot build)
+    if (start == value(QStringLiteral("startupLaunch")).toBool() &&
+        start == verifyLaunchFile()) {
         return;
     }
     setValue(QStringLiteral("startupLaunch"), start);
 #if defined(Q_OS_MACOS)
-    /* TODO - there should be more correct way via API, but didn't find it
-     without extra dependencies, there should be something like that:
-     https://stackoverflow.com/questions/3358410/programmatically-run-at-startup-on-mac-os-x
-     But files with this features differs on different MacOS versions and it
-     doesn't work not on a BigSur at lease.
-     */
-    QProcess process;
+    // Through System Events; also drops a login item left by the old
+    // Flameshot build and points the new one at the running bundle
     if (start) {
-        process.start("osascript",
-                      QStringList()
-                        << "-e"
-                        << "tell application \"System Events\" to make login "
-                           "item at end with properties {name: "
-                           "\"Pixieshot\",path:\"/Applications/"
-                           "Pixieshot.app\", hidden:false}");
+        loginitem::enable();
     } else {
-        process.start("osascript",
-                      QStringList() << "-e"
-                                    << "tell application \"System Events\" to "
-                                       "delete login item \"Pixieshot\"");
-    }
-    if (!process.waitForFinished()) {
-        qWarning() << "Login items is changed. " << process.errorString();
-    } else {
-        qWarning() << "Unable to change login items, error:"
-                   << process.readAll();
+        loginitem::disable();
     }
 #elif defined(Q_OS_UNIX)
     QString path =

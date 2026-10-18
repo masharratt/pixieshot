@@ -2,6 +2,7 @@
 #include "core/flameshot.h"
 #include "tools/pin/pinwidget.h"
 #include "utils/abstractlogger.h"
+#include "utils/appidentity.h"
 #include "utils/confighandler.h"
 #include "utils/globalvalues.h"
 #include "utils/screenshotsaver.h"
@@ -144,7 +145,7 @@ void FlameshotDaemon::createPin(const QPixmap& capture, QRect geometry)
     // A QPixmap loses its device pixel ratio when streamed, so send it along.
 #if defined(USE_KDSINGLEAPPLICATION) &&                                        \
   (defined(Q_OS_MACOS) || defined(Q_OS_WIN))
-    auto kdsa = KDSingleApplication(QStringLiteral("org.flameshot.Flameshot"));
+    auto kdsa = KDSingleApplication(AppIdentity::singleInstanceKey());
     stream << QStringLiteral("attachPin") << capture << geometry
            << capture.devicePixelRatio();
     kdsa.sendMessage(data);
@@ -168,7 +169,7 @@ void FlameshotDaemon::copyToClipboard(const QPixmap& capture)
 
 #if defined(USE_KDSINGLEAPPLICATION) &&                                        \
   (defined(Q_OS_MACOS) || defined(Q_OS_WIN))
-    auto kdsa = KDSingleApplication(QStringLiteral("org.flameshot.Flameshot"));
+    auto kdsa = KDSingleApplication(AppIdentity::singleInstanceKey());
     stream << QStringLiteral("attachScreenshotToClipboard") << capture;
     kdsa.sendMessage(data);
 #else
@@ -191,7 +192,7 @@ void FlameshotDaemon::copyToClipboard(const QString& text,
 
 #if defined(USE_KDSINGLEAPPLICATION) &&                                        \
   (defined(Q_OS_MACOS) || defined(Q_OS_WIN))
-    auto kdsa = KDSingleApplication(QStringLiteral("org.flameshot.Flameshot"));
+    auto kdsa = KDSingleApplication(AppIdentity::singleInstanceKey());
     QByteArray data;
     QDataStream stream(&data, QIODevice::WriteOnly);
     stream << QStringLiteral("attachTextToClipboard") << text << notification;

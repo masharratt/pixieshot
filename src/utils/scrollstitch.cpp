@@ -147,6 +147,14 @@ ScrollStitcher::ScrollStitcher(const Options& options)
     m_options.maxHeight = std::max(1, m_options.maxHeight);
 }
 
+// The ignore band is set in points; scroll bars are as wide in points on every
+// display, so it is scaled to the frame's device pixels
+int ScrollStitcher::ignoreRightFor(const QImage& frame) const
+{
+    const qreal dpr = frame.devicePixelRatio();
+    return qRound(m_options.ignoreRightPx * (dpr > 1.0 ? dpr : 1.0));
+}
+
 Step ScrollStitcher::add(const QImage& input)
 {
     if (m_full) {
@@ -159,7 +167,7 @@ Step ScrollStitcher::add(const QImage& input)
 
     if (m_reference.isNull()) {
         m_reference = frame;
-        hashRows(frame, m_options.ignoreRightPx, m_refHashes, m_refUniform);
+        hashRows(frame, ignoreRightFor(input), m_refHashes, m_refUniform);
         m_accepted = 1;
         const int rows = std::min(frame.height(), m_options.maxHeight);
         m_strips.push_back(copyRows(frame, 0, rows));
@@ -175,7 +183,7 @@ Step ScrollStitcher::add(const QImage& input)
 
     QVector<quint64> hashes;
     QVector<bool> uniform;
-    hashRows(frame, m_options.ignoreRightPx, hashes, uniform);
+    hashRows(frame, ignoreRightFor(input), hashes, uniform);
 
     const int n = frame.height();
     const Bands pair = sameBands(m_refHashes, hashes);

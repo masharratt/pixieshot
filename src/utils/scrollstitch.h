@@ -27,8 +27,9 @@ struct Options
 {
     // Height limit of the stitched image in pixels
     int maxHeight = 20000;
-    // Right-hand columns left out of matching, where overlay scroll bars
-    // appear and move while scrolling. Clamped to a quarter of the width.
+    // Right-hand columns (in points, scaled by the frame's device pixel
+    // ratio) left out of matching, where scroll bars appear and move while
+    // scrolling. Clamped to a quarter of the width.
     int ignoreRightPx = 24;
     // Share of the informative overlap rows that must match exactly
     double minMatchRatio = 0.75;
@@ -110,6 +111,7 @@ public:
     QImage preview(const QSize& bound) const;
 
 private:
+    int ignoreRightFor(const QImage& frame) const;
     int bodyHeight() const;
     void truncateBody(int rows);
     // Appends rows [from, to) of frame; returns false when the limit cut it
