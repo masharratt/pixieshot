@@ -89,6 +89,7 @@ constexpr const char* visibleInDockProperty = "_visibleInDock";
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QPainter>
 #include <QScreen>
@@ -181,6 +182,29 @@ Flameshot::Flameshot()
                       ConfigHandler().captureToastSeconds())) {
                     RecordingController::discardEditSource(editSource, path);
                 }
+            });
+
+    // Animate output: recorded with its project, so the toast and the
+    // history can open it in the editor again
+    connect(this,
+            &Flameshot::animationSaved,
+            this,
+            [](const QString& path,
+               const QString& kind,
+               const QSize& size,
+               const QString& project) {
+                CaptureHistory history(CaptureHistory::defaultIndexPath());
+                HistoryEntry entry;
+                entry.timestamp = QDateTime::currentDateTimeUtc();
+                entry.path = path;
+                entry.size = size;
+                entry.kind = kind;
+                entry.project = project;
+                if (history.append(entry)) {
+                    history.trimTo(ConfigHandler().captureHistoryMax());
+                }
+                CaptureToast::showForAnimation(
+                  path, kind, project, ConfigHandler().captureToastSeconds());
             });
 
     // Scrolling capture: the controller asks for the area picker and hands
@@ -1033,21 +1057,14 @@ QString Flameshot::storePendingProject(const QString& projectDir) const
     if (m_pendingProject.isEmpty()) {
         return {};
     }
-    QDir().mkpath(projectDir);
-    const QString path =
-      projectDir + QLatin1Char('/') +
-      QDateTime::currentDateTimeUtc().toString(
-        QStringLiteral("yyyyMMdd-HHmmss-zzz")) +
-      QLatin1Char('-') +
-      QUuid::createUuid().toString(QUuid::WithoutBraces).left(8) +
-      QLatin1Char('.') + captureproject::fileSuffix();
     // cfn: synchronous PNG encode on the UI thread after each annotated save,
     // move to a worker thread if large captures make the thumbnail lag
     QString error;
-    if (!captureproject::save(path, m_pendingProject, &error)) {
+    const QString path =
+      captureproject::saveInFolder(projectDir, m_pendingProject, &error);
+    if (path.isEmpty()) {
         AbstractLogger::warning(AbstractLogger::Stderr)
           << tr("Could not keep this capture editable: %1").arg(error);
-        return {};
     }
     return path;
 }
@@ -1061,8 +1078,36 @@ void Flameshot::editProject(const QString& path, const CaptureProject& project)
 {
     QPixmap image = QPixmap::fromImage(project.base);
     image.setDevicePixelRatio(project.base.devicePixelRatio());
-    openEditorWindow(
-      new EditorWindow(path, image, project.objects, project.beautified));
+    // An animation's editor saves a still next to it, never over the video
+    const QString savePath =
+      project.isAnimation() ? stillPathFor(path) : path;
+    auto* editor =
+      new EditorWindow(savePath, image, project.objects, project.beautified);
+    if (project.isAnimation()) {
+        editor->setAnimSettings(project.anim);
+    }
+    openEditorWindow(editor);
+}
+
+QString Flameshot::stillPathFor(const QString& animationPath)
+{
+    const QFileInfo info(animationPath);
+    return info.absolutePath() + QLatin1Char('/') + info.completeBaseName() +
+           QStringLiteral(".png");
+}
+
+void Flameshot::editAnimation(const QString& path, const QString& projectPath)
+{
+    CaptureProject project;
+    QString error;
+    if (!captureproject::load(projectPath, project, &error)) {
+        QMessageBox::warning(
+          nullptr,
+          tr("Edit"),
+          tr("This animation can no longer be edited.\n\n%1").arg(error));
+        return;
+    }
+    editProject(path, project);
 }
 
 void Flameshot::editCaptureAgain(const QString& path, const QPixmap& capture)
@@ -1082,6 +1127,11 @@ void Flameshot::editCaptureAgain(const QString& path, const QPixmap& capture)
           tr("The annotations of this capture could not be restored, so it "
              "opens as a flat image.\n\n%1")
             .arg(error));
+    }
+    // A video or GIF has no flat image to edit (saving would replace it)
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    if (suffix == QLatin1String("gif") || suffix == QLatin1String("mp4")) {
+        return;
     }
     editSavedCapture(path, capture);
 }

@@ -8,12 +8,14 @@
 #include <QCoreApplication>
 #include <QDataStream>
 #include <QDebug>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMetaEnum>
 #include <QSaveFile>
+#include <QUuid>
 
 #include <cmath>
 #include <memory>
@@ -26,6 +28,7 @@ const auto kDprKey = QStringLiteral("dpr");
 const auto kObjectsKey = QStringLiteral("objects");
 const auto kBeautifiedKey = QStringLiteral("beautified");
 const auto kTypeKey = QStringLiteral("type");
+const auto kAnimKey = QStringLiteral("anim");
 
 QString tr(const char* text)
 {
@@ -135,6 +138,9 @@ QByteArray encode(const CaptureProject& project)
     header.insert(kDprKey, project.base.devicePixelRatio());
     header.insert(kObjectsKey, project.objects);
     header.insert(kBeautifiedKey, project.beautified);
+    if (project.isAnimation()) {
+        header.insert(kAnimKey, project.anim);
+    }
 
     QByteArray png;
     {
@@ -208,6 +214,7 @@ bool decode(const QByteArray& bytes, CaptureProject& out, QString* error)
     out.base = base;
     out.objects = header.value(kObjectsKey).toArray();
     out.beautified = header.value(kBeautifiedKey).toBool(false);
+    out.anim = header.value(kAnimKey).toObject();
     return true;
 }
 
@@ -249,6 +256,24 @@ bool load(const QString& path, CaptureProject& out, QString* error)
         return false;
     }
     return true;
+}
+
+QString saveInFolder(const QString& folder,
+                     const CaptureProject& project,
+                     QString* error)
+{
+    QDir().mkpath(folder);
+    const QString path =
+      folder + QLatin1Char('/') +
+      QDateTime::currentDateTimeUtc().toString(
+        QStringLiteral("yyyyMMdd-HHmmss-zzz")) +
+      QLatin1Char('-') +
+      QUuid::createUuid().toString(QUuid::WithoutBraces).left(8) +
+      QLatin1Char('.') + fileSuffix();
+    if (!save(path, project, error)) {
+        return {};
+    }
+    return path;
 }
 
 } // namespace captureproject

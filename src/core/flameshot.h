@@ -98,6 +98,12 @@ signals:
                         const QString& kind,
                         const QSize& size,
                         const QString& editSource);
+    // An "Animate" export was saved (kind "mp4" or "gif"). project is its
+    // re-editable capture project, empty when it could not be written.
+    void animationSaved(const QString& path,
+                        const QString& kind,
+                        const QSize& size,
+                        const QString& project);
 
 public slots:
     // Record hotkey or menu item: picks an area, or stops a running recording
@@ -117,6 +123,10 @@ public slots:
     // when there is none, or it cannot be read (the user is told why), opens
     // the flat image like editSavedCapture.
     void editCaptureAgain(const QString& path, const QPixmap& capture);
+    // Edit on an "Animate" output's toast: opens its project in the editor
+    // (annotations movable, Animate preset to how it was made). The user is
+    // told when the project cannot be read.
+    void editAnimation(const QString& path, const QString& projectPath);
     // Brings every open editor window to the front (tray menu)
     void showEditorWindows();
     bool hasEditorWindows() const;
@@ -130,6 +140,8 @@ private:
     Flameshot();
     bool resolveAnyConfigErrors();
     void openEditorWindow(EditorWindow* editor);
+    // Where an animation's editor saves its still: same folder and name, PNG
+    static QString stillPathFor(const QString& animationPath);
     // Writes the pending project into the history's project folder; the
     // file path, or empty when there is nothing to write or it failed
     QString storePendingProject(const QString& projectDir) const;

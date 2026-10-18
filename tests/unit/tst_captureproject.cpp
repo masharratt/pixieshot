@@ -481,6 +481,60 @@ private slots:
         QVERIFY2(!QFileInfo::exists(path), "no unreadable file left behind");
     }
 
+    // Animate output keeps the objects and the Animate/effect settings it
+    // was made with, so "Edit" on its toast can reopen and re-export it
+    void animSettingsAndObjectsSurviveFileRoundTrip()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        CaptureProject p;
+        p.base = baseCanvas().toImage();
+        p.base.setDevicePixelRatio(2.0);
+        Tools tools;
+        tools.list << drawObject(CaptureTool::TYPE_RECTANGLE, QString())
+                   << drawObject(CaptureTool::TYPE_ARROW, QString());
+        p.objects = captureproject::encodeObjects(tools.pointers(), QPoint());
+        QCOMPARE(p.objects.size(), 2);
+        QVERIFY(!p.isAnimation());
+        p.anim = QJsonObject{ { "animStyle", 4 },
+                              { "animMotion", 2 },
+                              { "animFormat", 1 },
+                              { "effectCornerRadius", 12 } };
+        QVERIFY(p.isAnimation());
+
+        QString error;
+        const QString path =
+          captureproject::saveInFolder(dir.filePath("projects"), p, &error);
+        QVERIFY2(!path.isEmpty(), qPrintable(error));
+        QVERIFY(path.startsWith(dir.filePath("projects") + "/"));
+        QVERIFY(path.endsWith("." + captureproject::fileSuffix()));
+        // Two saves never share a file (history deletes them one by one)
+        const QString second =
+          captureproject::saveInFolder(dir.filePath("projects"), p, &error);
+        QVERIFY(!second.isEmpty());
+        QVERIFY(second != path);
+
+        CaptureProject loaded;
+        QVERIFY2(captureproject::load(path, loaded, &error), qPrintable(error));
+        QVERIFY(loaded.isAnimation());
+        QCOMPARE(loaded.anim, p.anim);
+        QCOMPARE(loaded.objects, p.objects);
+        QCOMPARE(loaded.base.devicePixelRatio(), 2.0);
+    }
+
+    // Still captures (and projects from before Animate kept one) have none
+    void missingAnimKeyMeansStillCapture()
+    {
+        CaptureProject p;
+        p.base = baseCanvas().toImage();
+        CaptureProject out;
+        QString error;
+        QVERIFY2(captureproject::decode(captureproject::encode(p), out, &error),
+                 qPrintable(error));
+        QVERIFY(!out.isAnimation());
+        QVERIFY(out.anim.isEmpty());
+    }
+
     void missingFileFailsWithClearError()
     {
         QTemporaryDir dir;

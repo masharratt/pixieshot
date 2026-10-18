@@ -9,6 +9,7 @@
 #include "platform/screenrecorder.h"
 #include "utils/confighandler.h"
 #include "utils/imageeffects.h"
+#include "widgets/animpickers.h"
 
 #include <QCheckBox>
 #include <QEvent>
@@ -324,19 +325,11 @@ void WorkflowsConf::addAnimateGroup()
     auto* form = new QFormLayout();
 
     m_animStyle = new QComboBox(box);
-    m_animStyle->addItem(tr("Aurora"), int(AnimStyle::Aurora));
-    m_animStyle->addItem(tr("Gradient shift"), int(AnimStyle::GradientShift));
-    m_animStyle->addItem(tr("Blobs"), int(AnimStyle::Blobs));
-    m_animStyle->addItem(tr("Twinkle"), int(AnimStyle::Twinkle));
-    m_animStyle->addItem(tr("Flow"), int(AnimStyle::Flow));
-    m_animStyle->addItem(tr("Silk"), int(AnimStyle::Silk));
+    animpickers::fillStyles(m_animStyle);
     form->addRow(tr("Style"), m_animStyle);
 
     m_animMotion = new QComboBox(box);
-    m_animMotion->addItem(tr("None"), int(ShotMotion::None));
-    m_animMotion->addItem(tr("Tilt and light sweep"), int(ShotMotion::Tilt));
-    m_animMotion->addItem(tr("Float"), int(ShotMotion::Float));
-    m_animMotion->setToolTip(tr("How the screenshot itself moves in the loop."));
+    animpickers::fillMotions(m_animMotion);
     form->addRow(tr("Shot motion"), m_animMotion);
 
     m_animAnnotations = new QComboBox(box);
@@ -359,9 +352,7 @@ void WorkflowsConf::addAnimateGroup()
     form->addRow(tr("Frame rate"), m_animFps);
 
     m_animFormat = new QComboBox(box);
-    m_animFormat->addItem(tr("MP4"), 0);
-    m_animFormat->addItem(tr("GIF"), 1);
-    m_animFormat->addItem(tr("MP4 and GIF"), 2);
+    animpickers::fillFormats(m_animFormat);
     form->addRow(tr("Format"), m_animFormat);
     boxLayout->addLayout(form);
 

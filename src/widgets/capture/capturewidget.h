@@ -13,6 +13,7 @@
 
 #include "tools/capturecontext.h"
 #include "tools/capturetool.h"
+#include "utils/animrender.h"
 #include "utils/annotationlayer.h"
 #include "utils/captureproject.h"
 #include "utils/confighandler.h"
@@ -128,6 +129,9 @@ public:
     // Windowed editor: adds saved annotations over the image, still
     // movable and editable. Returns one message per skipped entry.
     QStringList restoreObjects(const QJsonArray& objects);
+    // Settings of the "Animate" output this capture was reopened from; the
+    // Animate preview starts from them instead of the saved choice
+    void setAnimSettings(const QJsonObject& settings);
 
     // Windowed editor: add white space on every edge, undoable. Does nothing
     // outside edit mode.
@@ -201,8 +205,13 @@ private:
     EditCanvasState currentEditCanvasState();
     // Beautify button, overlay or editor (see beautifyActionFor)
     void handleBeautifyRequest();
-    // Animate button: finish and export (overlay) or export in place
+    // Animate button: opens the preview; its Export finishes and exports
+    // (overlay) or exports in place (windowed editor)
     void handleAnimateRequest();
+    // What Animate starts from in the windowed editor now
+    AnimSource editAnimSource();
+    // The preview's Export: keeps the choice, then exports `source`
+    void exportAnimation(const AnimSource& source, const AnimChoice& choice);
     // What Animate starts from in an editor state: the image without its
     // annotations, cut to `crop` (device pixels inside the image; null for
     // all of it), and the annotations as objects relative to that
@@ -328,5 +337,7 @@ private:
     // m_editImageRectDevice is device pixels in m_context.screenshot.
     bool m_editMode{ false };
     QRect m_editImageRectLogical;
+    // Animate settings of the output this was reopened from (empty: none)
+    QJsonObject m_animSettings;
     QRect m_editImageRectDevice;
 };

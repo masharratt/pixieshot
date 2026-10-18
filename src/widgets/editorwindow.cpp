@@ -41,6 +41,13 @@ constexpr int kToolbarPad = 6;
 constexpr int kToolbarSpacing = 4;
 } // namespace
 
+void EditorWindow::setAnimSettings(const QJsonObject& settings)
+{
+    if (m_capture) {
+        m_capture->setAnimSettings(settings);
+    }
+}
+
 EditorWindow::EditorWindow(const QString& path,
                            const QPixmap& image,
                            const QJsonArray& objects,

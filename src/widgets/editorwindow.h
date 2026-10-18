@@ -3,6 +3,7 @@
 #pragma once
 
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QPixmap>
 #include <QPointer>
 #include <QString>
@@ -41,6 +42,9 @@ public:
 
     // Size and center the window on the screen under the cursor, then show it
     void present();
+    // Opened from an "Animate" output: its settings (see CaptureProject::anim)
+    // preset the Animate preview
+    void setAnimSettings(const QJsonObject& settings);
 
 protected:
     void resizeEvent(QResizeEvent* event) override;

@@ -70,7 +70,7 @@ set(_drawable_tool_sources
     utils/colorutils.cpp utils/pathinfo.cpp)
 # Animated frames and everything they draw with
 set(_anim_frame_sources
-    utils/animatedbg.cpp utils/animatedframe.cpp utils/animtimeline.cpp
+    utils/animatedbg.cpp utils/animatedframe.cpp utils/animtimeline.cpp utils/animrender.cpp
     utils/shotmotion.cpp utils/beautifylayout.cpp
     utils/imageeffects.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp
     utils/autocolors.cpp utils/glassframe.cpp)
@@ -126,6 +126,7 @@ if(APPLE)
     "${CMAKE_SOURCE_DIR}/src/core/recordingedit.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animatedbg.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animatedframe.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/animrender.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animtimeline.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/shotmotion.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/gifquant.cpp"
@@ -196,6 +197,10 @@ endfunction()
 # CaptureWidget, in the overlay and in the windowed editor. The daemon is
 # hosted in-process, so nothing reaches the user's running app.
 flameshot_add_app_test(tst_toolbarrobot 300)
+
+# Animate preview dialog (same renderer as the export) and editable Animate
+# output: project in the history, Edit on the toast
+flameshot_add_app_test(tst_animpreview 180)
 
 # Style packs: parse, serialize and apply against the real ConfigHandler and
 # its value checks, with settings in a temp dir

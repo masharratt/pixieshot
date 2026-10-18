@@ -22,6 +22,7 @@
 #include "utils/appidentity.h"
 #include "utils/confighandler.h"
 #include "utils/valuehandler.h"
+#include "widgets/animpreviewdialog.h"
 #include "widgets/capture/capturetoolbutton.h"
 #include "widgets/capture/capturewidget.h"
 #include "widgets/editorwindow.h"
@@ -321,6 +322,16 @@ private slots:
         }
         QVERIFY2(target, "button not shown");
         QTest::mouseClick(target, Qt::LeftButton, {}, target->rect().center());
+        if (type == CaptureTool::TYPE_ANIMATE) {
+            // Animate opens its preview first; the modal closer cancels it
+            bool previewShown = false;
+            for (QWidget* w : QApplication::topLevelWidgets()) {
+                previewShown = previewShown ||
+                               (qobject_cast<AnimPreviewDialog*>(w) != nullptr &&
+                                w->isVisible());
+            }
+            QVERIFY2(previewShown, "Animate did not open its preview");
+        }
         pump(300);
         // A second click on a tool that kept the widget open (toggle off)
         if (m_capture && target && target->isVisible()) {

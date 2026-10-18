@@ -86,6 +86,12 @@ CaptureToast::CaptureToast(const QString& path,
     };
     if (recording) {
         m_editButton = addButton(tr("Edit"), [this]() {
+            if (!m_projectPath.isEmpty()) {
+                // Animate output: back into the capture editor
+                Flameshot::instance()->editAnimation(m_path, m_projectPath);
+                close();
+                return;
+            }
             // The editor takes over the source and its cleanup
             const QString source = m_editSource;
             m_editSource.clear();
@@ -144,14 +150,10 @@ void CaptureToast::showFor(const QString& path,
     toast->m_timer.start();
 }
 
-bool CaptureToast::showForRecording(const QString& path,
-                                    const QString& kind,
-                                    const QString& editSource,
-                                    int seconds)
+CaptureToast* CaptureToast::createForVideo(const QString& path,
+                                           const QString& kind,
+                                           int seconds)
 {
-    if (seconds <= 0) {
-        return false;
-    }
     const qreal dpr = QGuiApplication::primaryScreen()->devicePixelRatio();
     QImage frame;
     if (kind == QLatin1String("gif")) {
@@ -168,16 +170,52 @@ bool CaptureToast::showForRecording(const QString& path,
     auto* toast = new CaptureToast(
       path, QPixmap::fromImage(frame), QRect(), QRect(), seconds, true);
     toast->m_kind = kind;
+    return toast;
+}
+
+void CaptureToast::showStacked()
+{
+    s_toasts.prepend(this);
+    restack();
+    show();
+    m_timer.start();
+}
+
+bool CaptureToast::showForRecording(const QString& path,
+                                    const QString& kind,
+                                    const QString& editSource,
+                                    int seconds)
+{
+    if (seconds <= 0) {
+        return false;
+    }
+    CaptureToast* toast = createForVideo(path, kind, seconds);
     toast->m_editSource = editSource;
     if (editSource.isEmpty() && toast->m_editButton != nullptr) {
-        // Nothing to edit from (an animated-background GIF)
+        // Nothing to edit from
         toast->m_editButton->hide();
         toast->setFixedSize(toast->sizeHint());
     }
-    s_toasts.prepend(toast);
-    restack();
-    toast->show();
-    toast->m_timer.start();
+    toast->showStacked();
+    return true;
+}
+
+bool CaptureToast::showForAnimation(const QString& path,
+                                    const QString& kind,
+                                    const QString& projectPath,
+                                    int seconds)
+{
+    if (seconds <= 0) {
+        return false;
+    }
+    CaptureToast* toast = createForVideo(path, kind, seconds);
+    toast->m_projectPath = projectPath;
+    if (projectPath.isEmpty() && toast->m_editButton != nullptr) {
+        // The project could not be written, so there is nothing to edit
+        toast->m_editButton->hide();
+        toast->setFixedSize(toast->sizeHint());
+    }
+    toast->showStacked();
     return true;
 }
 

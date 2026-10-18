@@ -15,6 +15,7 @@
 #include "core/flameshot.h"
 #if defined(Q_OS_MACOS)
 #include "core/animexportjob.h"
+#include "widgets/animpreviewdialog.h"
 #endif
 #include "core/qguiappcurrentscreen.h"
 #include "tools/abstracttwopointtool.h"
@@ -2589,8 +2590,59 @@ void CaptureWidget::handleBeautifyRequest()
     }
 }
 
+void CaptureWidget::setAnimSettings(const QJsonObject& settings)
+{
+    m_animSettings = settings;
+}
+
 void CaptureWidget::handleAnimateRequest()
 {
+#if defined(Q_OS_MACOS)
+    // A text being typed becomes an object first, so it is in the preview
+    commitCurrentTool();
+    AnimSource source;
+    if (m_editMode) {
+        source = editAnimSource();
+    } else {
+        // The selection without annotations, and the annotations as
+        // objects: what exportCapture animates from
+        const CaptureProject project = currentProject();
+        source.base = project.base;
+        source.objects = project.objects;
+        source.dpr = project.base.devicePixelRatio();
+    }
+    const AnimChoice initial =
+      animChoiceFrom(m_animSettings, AnimExportJob::configuredChoice());
+    // Window-modal: the editor waits underneath and keeps everything on
+    // Cancel. Owned by this widget, so it can never outlive it.
+    auto* dialog = new AnimPreviewDialog(source, initial, this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    if (!m_editMode) {
+        // Above the full-screen overlay
+        dialog->setWindowFlag(Qt::WindowStaysOnTopHint);
+    }
+    connect(dialog, &QDialog::accepted, this, [this, dialog]() {
+        const AnimSource chosenSource = dialog->source();
+        const AnimChoice choice = dialog->choice();
+        // After the dialog's own signal returns: the overlay closes itself
+        // on export, which deletes the dialog
+        QTimer::singleShot(0, this, [this, chosenSource, choice]() {
+            exportAnimation(chosenSource, choice);
+        });
+    });
+    dialog->open();
+#endif
+}
+
+void CaptureWidget::exportAnimation(const AnimSource& source,
+                                    const AnimChoice& choice)
+{
+#if defined(Q_OS_MACOS)
+    // The choice becomes the saved one, which the overlay's export reads
+    AnimExportJob::rememberChoice(choice);
+    if (!m_animSettings.isEmpty()) {
+        writeAnimChoice(m_animSettings, choice);
+    }
     if (!m_editMode) {
         // Finish like Beautify; exportCapture also writes the animation
         m_context.request.addTask(CaptureRequest::BEAUTIFY);
@@ -2599,9 +2651,18 @@ void CaptureWidget::handleAnimateRequest()
         close();
         return;
     }
-    // Windowed editor: export and stay open. Animate applies the effects
-    // itself, so it starts from un-beautified pixels (see animateBaseFor).
-    commitCurrentTool();
+    // Windowed editor: export and stay open
+    AnimExportJob::start(source, m_context.request.path(), choice);
+#else
+    Q_UNUSED(source)
+    Q_UNUSED(choice)
+#endif
+}
+
+AnimSource CaptureWidget::editAnimSource()
+{
+    // Animate applies the effects itself, so it starts from un-beautified
+    // pixels (see animateBaseFor)
     const BeautifyEditCommand* beautify = nullptr;
     bool beautifyIsNewest = false;
     bool canvasChangedSince = false;
@@ -2616,21 +2677,15 @@ void CaptureWidget::handleAnimateRequest()
         }
         beautifyIsNewest = beautify != nullptr && cmd == beautify;
     }
-    AnimSource source;
     switch (animateBaseFor(beautify != nullptr, beautifyIsNewest, canvasChangedSince)) {
         case AnimateBase::BeforeBeautify:
-            source = animSourceOf(beautify->before(), QRect());
-            break;
+            return animSourceOf(beautify->before(), QRect());
         case AnimateBase::BeautifiedShot:
-            source = animSourceOf(currentEditCanvasState(), beautify->shotSource());
-            break;
+            return animSourceOf(currentEditCanvasState(), beautify->shotSource());
         case AnimateBase::CurrentImage:
-            source = animSourceOf(currentEditCanvasState(), QRect());
             break;
     }
-#if defined(Q_OS_MACOS)
-    AnimExportJob::start(source, m_context.request.path());
-#endif
+    return animSourceOf(currentEditCanvasState(), QRect());
 }
 
 AnimSource CaptureWidget::animSourceOf(const EditCanvasState& state,
