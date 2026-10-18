@@ -15,8 +15,10 @@
 #include "core/flameshot.h"
 #include "core/qguiappcurrentscreen.h"
 #include "tools/abstracttwopointtool.h"
+#include "tools/beautify/beautifyaction.h"
 #include "tools/copy/copytool.h"
 #include "utils/abstractlogger.h"
+#include "utils/imageeffects.h"
 #include "utils/screengrabber.h"
 #include "core/capturefirstrequest.h"
 #include "platform/windowpick.h"
@@ -1654,6 +1656,9 @@ void CaptureWidget::handleToolSignal(CaptureTool::Request r)
         case CaptureTool::REQ_CLOSE_GUI:
             close();
             break;
+        case CaptureTool::REQ_BEAUTIFY:
+            handleBeautifyRequest();
+            break;
         case CaptureTool::REQ_HIDE_GUI:
             hide();
             break;
@@ -2530,6 +2535,90 @@ void CaptureWidget::applyCanvasExpansion(int stepLogical)
     setFixedSize(size() + QSize(2 * stepLogical, 2 * stepLogical));
     m_selection->setGeometry(m_editImageRectLogical);
     drawToolsData();
+    update();
+    emit editCanvasResized(size());
+}
+
+void CaptureWidget::handleBeautifyRequest()
+{
+    const int index = m_undoStack.index();
+    const QUndoCommand* last =
+      index > 0 ? m_undoStack.command(index - 1) : nullptr;
+    const bool lastIsBeautify =
+      last != nullptr && last->id() == BeautifyEditCommand::kId;
+    switch (beautifyActionFor(m_editMode, lastIsBeautify)) {
+        case BeautifyAction::FinishCapture:
+            // Same finish as Accept: the request's own tasks (save, copy,
+            // after-capture actions) run on the beautified image
+            m_context.request.addTask(CaptureRequest::BEAUTIFY);
+            handleToolSignal(CaptureTool::REQ_CAPTURE_DONE_OK);
+            close();
+            break;
+        case BeautifyAction::ApplyInEditor:
+            beautifyEditImage();
+            break;
+        case BeautifyAction::RevertInEditor:
+            undo();
+            break;
+    }
+}
+
+// The result matches what Accept + Beautify exports from the overlay: the
+// annotations are part of the image the effects are applied to (rounded
+// corners and the frame clip them the same way). They stop being separate
+// objects until the step is undone.
+void CaptureWidget::beautifyEditImage()
+{
+    if (!m_editMode) {
+        return;
+    }
+    commitCurrentTool();
+    const EditCanvasState before = currentEditCanvasState();
+
+    // Flatten without selection outlines or the bend handle
+    drawToolsData(false);
+    const qreal dpr = m_context.origScreenshot.devicePixelRatio();
+    QImage flat = m_context.screenshot.copy(m_editImageRectDevice).toImage();
+    flat.setDevicePixelRatio(dpr);
+    QImage beautified =
+      imageeffects::applyEffects(flat, ConfigHandler().effectSettings());
+    beautified.setDevicePixelRatio(dpr);
+
+    // Lay the result out like a freshly opened image, then read it back
+    initEditCanvas(QPixmap::fromImage(beautified));
+    // The annotations are part of the pixels now
+    m_captureToolObjects.clear();
+    const EditCanvasState after = currentEditCanvasState();
+    // push() runs redo(), which applies `after`
+    m_undoStack.push(new BeautifyEditCommand(this, before, after));
+}
+
+EditCanvasState CaptureWidget::currentEditCanvasState()
+{
+    EditCanvasState state;
+    state.canvas = m_context.origScreenshot;
+    state.imageLogical = m_editImageRectLogical;
+    state.imageDevice = m_editImageRectDevice;
+    state.canvasLogical = size();
+    state.objects = m_captureToolObjects;
+    return state;
+}
+
+void CaptureWidget::restoreEditCanvasState(const EditCanvasState& state)
+{
+    if (!m_editMode) {
+        return;
+    }
+    m_context.origScreenshot = state.canvas;
+    m_context.screenshot = state.canvas;
+    m_editImageRectLogical = state.imageLogical;
+    m_editImageRectDevice = state.imageDevice;
+    m_context.selection = m_editImageRectDevice;
+    setFixedSize(state.canvasLogical);
+    m_selection->setGeometry(m_editImageRectLogical);
+    m_captureToolObjects = state.objects;
+    drawToolsData();
+    updateLayersPanel();
     update();
     emit editCanvasResized(size());
 }

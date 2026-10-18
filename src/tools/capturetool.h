@@ -84,7 +84,10 @@ public:
         // decrease tool size for all tools
         REQ_DECREASE_TOOL_SIZE,
         // Commit the active tool.
-        REQ_COMMIT_CURRENT_TOOL
+        REQ_COMMIT_CURRENT_TOOL,
+        // Beautify button: the widget decides whether to finish the capture
+        // (overlay) or beautify the image in place (windowed editor).
+        REQ_BEAUTIFY
     };
 
     explicit CaptureTool(QObject* parent = nullptr)

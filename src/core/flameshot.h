@@ -83,8 +83,8 @@ public:
 
 signals:
     void captureTaken(QPixmap p);
-    // Editor windows were hidden or shown again (tray menu enable state)
-    void hiddenEditorsChanged();
+    // An editor window opened or closed (tray menu enable state)
+    void editorWindowsChanged();
     void captureFailed();
     // selection uses exportCapture units (for pins); globalRect is the
     // captured area in global logical points.
@@ -117,11 +117,9 @@ public slots:
     // when there is none, or it cannot be read (the user is told why), opens
     // the flat image like editSavedCapture.
     void editCaptureAgain(const QString& path, const QPixmap& capture);
-    // Hide every visible editor window, keeping its edits, and remember them
-    // so showEditorWindows() can bring them back
-    void hideEditorWindows();
+    // Brings every open editor window to the front (tray menu)
     void showEditorWindows();
-    bool hasHiddenEditorWindows() const;
+    bool hasEditorWindows() const;
     // Adds or removes the Dock icon (Cmd+Tab entry) for open editors
     void updateEditorDockIcon();
     void exportCapture(const QPixmap& p,
@@ -147,7 +145,6 @@ private:
 
     QPointer<CaptureWidget> m_captureWindow;
     QList<QPointer<EditorWindow>> m_editorWindows;
-    QList<QPointer<EditorWindow>> m_hiddenEditors;
     QPointer<InfoWindow> m_infoWindow;
     QPointer<CaptureLauncher> m_launcherWindow;
     QPointer<ConfigWindow> m_configWindow;

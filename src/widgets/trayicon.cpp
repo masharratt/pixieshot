@@ -232,20 +232,20 @@ void TrayIcon::initMenu()
     m_menu->addAction(m_captureAction);
     m_menu->addAction(m_launcherAction);
 #if defined(Q_OS_MACOS)
-    // Editor windows hide when the app is deactivated; this brings them back
+    // Brings open editor windows to the front, e.g. from behind other apps
     m_showEditorsAction = new QAction(tr("Show &Edit Windows"), this);
     m_showEditorsAction->setEnabled(
-      Flameshot::instance()->hasHiddenEditorWindows());
+      Flameshot::instance()->hasEditorWindows());
     connect(m_showEditorsAction,
             &QAction::triggered,
             Flameshot::instance(),
             &Flameshot::showEditorWindows);
     connect(Flameshot::instance(),
-            &Flameshot::hiddenEditorsChanged,
+            &Flameshot::editorWindowsChanged,
             this,
             [this]() {
                 m_showEditorsAction->setEnabled(
-                  Flameshot::instance()->hasHiddenEditorWindows());
+                  Flameshot::instance()->hasEditorWindows());
             });
     m_menu->addAction(m_showEditorsAction);
 #endif

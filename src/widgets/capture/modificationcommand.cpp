@@ -41,3 +41,23 @@ void ExpandCanvasCommand::redo()
 {
     m_captureWidget->applyCanvasExpansion(m_stepLogical);
 }
+
+BeautifyEditCommand::BeautifyEditCommand(CaptureWidget* captureWidget,
+                                         const EditCanvasState& before,
+                                         const EditCanvasState& after)
+  : m_captureWidget(captureWidget)
+  , m_before(before)
+  , m_after(after)
+{
+    setText(QObject::tr("Beautify"));
+}
+
+void BeautifyEditCommand::undo()
+{
+    m_captureWidget->restoreEditCanvasState(m_before);
+}
+
+void BeautifyEditCommand::redo()
+{
+    m_captureWidget->restoreEditCanvasState(m_after);
+}

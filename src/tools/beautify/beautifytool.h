@@ -4,8 +4,10 @@
 
 #include "tools/abstractactiontool.h"
 
-// Finishes the capture like Accept, with the beautify effects (background,
-// padding, shadow) applied to the exported image
+// Beautify effects (background, padding, shadow). In the capture overlay it
+// finishes like Accept with the effects applied to the exported image; in
+// the windowed editor it beautifies the image in place (undoable, pressing
+// again reverts) and the window stays open.
 class BeautifyTool : public AbstractActionTool
 {
     Q_OBJECT

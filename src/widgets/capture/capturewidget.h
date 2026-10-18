@@ -20,6 +20,7 @@
 #include "widgets/capture/capturetoolbutton.h"
 #include "widgets/capture/capturetoolobjects.h"
 #include "widgets/capture/magnifierwidget.h"
+#include "widgets/capture/modificationcommand.h"
 #include "widgets/capture/selectionwidget.h"
 #include "widgets/editcanvas.h"
 
@@ -133,6 +134,9 @@ public:
     // Applies (or with a negative step reverts) an expansion. Called by the
     // undo command, not meant for direct use.
     void applyCanvasExpansion(int stepLogical);
+    // Windowed editor: puts back a canvas saved by the Beautify undo
+    // command, not meant for direct use.
+    void restoreEditCanvasState(const EditCanvasState& state);
 
 protected:
     void paintEvent(QPaintEvent* paintEvent) override;
@@ -190,6 +194,12 @@ private:
     // Windowed edit mode: builds the canvas (image plus margin) from the
     // request's edit image
     void initEditCanvas(const QPixmap& image);
+    // Windowed editor Beautify: flattens the annotations into the image and
+    // replaces it with the beautified result, as one undoable step
+    void beautifyEditImage();
+    EditCanvasState currentEditCanvasState();
+    // Beautify button, overlay or editor (see beautifyActionFor)
+    void handleBeautifyRequest();
     void drawPickerSizeLabel(QPainter* painter);
     void selectHoveredWindow();
     void drawToolsData(bool drawSelection = true);

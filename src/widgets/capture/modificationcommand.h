@@ -4,7 +4,33 @@
 #pragma once
 
 #include "capturetoolobjects.h"
+#include <QPixmap>
+#include <QRect>
+#include <QSize>
 #include <QUndoCommand>
+
+// Everything that makes up the windowed editor's canvas. Copies deep-copy
+// the annotations (CaptureToolObjects is a QObject with its own operator=).
+struct EditCanvasState
+{
+    QPixmap canvas;
+    QRect imageLogical;
+    QRect imageDevice;
+    QSize canvasLogical;
+    CaptureToolObjects objects;
+
+    EditCanvasState() = default;
+    EditCanvasState(const EditCanvasState& other) { *this = other; }
+    EditCanvasState& operator=(const EditCanvasState& other)
+    {
+        canvas = other.canvas;
+        imageLogical = other.imageLogical;
+        imageDevice = other.imageDevice;
+        canvasLogical = other.canvasLogical;
+        objects = other.objects;
+        return *this;
+    }
+};
 
 class CaptureWidget;
 
@@ -38,4 +64,27 @@ public:
 private:
     CaptureWidget* m_captureWidget;
     int m_stepLogical;
+};
+
+// Windowed editor: Beautify applied in place. The image and its annotations
+// were flattened and beautified; undo puts back the canvas and the editable
+// annotations exactly as they were.
+class BeautifyEditCommand : public QUndoCommand
+{
+public:
+    // id() of this command, so a second Beautify press can recognise it
+    static constexpr int kId = 0x6265; // "be"
+
+    BeautifyEditCommand(CaptureWidget* captureWidget,
+                        const EditCanvasState& before,
+                        const EditCanvasState& after);
+
+    int id() const override { return kId; }
+    void undo() override;
+    void redo() override;
+
+private:
+    CaptureWidget* m_captureWidget;
+    EditCanvasState m_before;
+    EditCanvasState m_after;
 };

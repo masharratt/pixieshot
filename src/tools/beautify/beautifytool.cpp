@@ -39,9 +39,8 @@ CaptureTool* BeautifyTool::copy(QObject* parent)
 
 void BeautifyTool::pressed(CaptureContext& context)
 {
-    // Same finish as Accept: the request's own tasks (save, copy, ...) run
-    // on the beautified image
-    context.request.addTask(CaptureRequest::BEAUTIFY);
-    emit requestAction(REQ_CAPTURE_DONE_OK);
-    emit requestAction(REQ_CLOSE_GUI);
+    Q_UNUSED(context)
+    // The overlay finishes like Accept; the windowed editor beautifies in
+    // place and stays open (see beautifyActionFor)
+    emit requestAction(REQ_BEAUTIFY);
 }

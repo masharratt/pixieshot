@@ -123,22 +123,13 @@ Flameshot::Flameshot()
                 }
             });
 
-    // Editor windows hide when the user switches to another app. A modal
-    // dialog of ours (such as the colour dialog) keeps them in place.
+    // Editor windows are ordinary document windows: they stay on screen,
+    // behind the other app, when the user switches away. While the app is
+    // inactive it gets a Dock icon, so Cmd+Tab and the Dock can return to them.
     connect(qApp,
             &QGuiApplication::applicationStateChanged,
             this,
-            [this](Qt::ApplicationState state) {
-                if (shouldHideEditors(state,
-                                      QApplication::activeModalWidget())) {
-                    hideEditorWindows();
-                } else if (shouldReshowEditors(state,
-                                               hasHiddenEditorWindows())) {
-                    // Back via Cmd+Tab, the Dock or the menu bar
-                    showEditorWindows();
-                }
-                updateEditorDockIcon();
-            });
+            [this](Qt::ApplicationState) { updateEditorDockIcon(); });
 
     // Screen recording: the controller asks for the area picker and reports
     // the saved file, which is recorded in the history and shown in a toast.
@@ -1058,15 +1049,13 @@ void Flameshot::editCaptureAgain(const QString& path, const QPixmap& capture)
 
 void Flameshot::openEditorWindow(EditorWindow* editor)
 {
-    // A new Edit brings back editors hidden when the app was deactivated
-    showEditorWindows();
     m_editorWindows.append(editor);
     connect(editor, &QObject::destroyed, this, [this]() {
         m_editorWindows.removeAll(nullptr);
-        m_hiddenEditors.removeAll(nullptr);
-        emit hiddenEditorsChanged();
+        emit editorWindowsChanged();
         updateEditorDockIcon();
     });
+    emit editorWindowsChanged();
     // No showDockIcon() here: switching the app to a regular Dock app while
     // the user is in another app's full-screen Space makes macOS jump to the
     // desktop Space instead of showing the editor where the user is. The
@@ -1075,32 +1064,19 @@ void Flameshot::openEditorWindow(EditorWindow* editor)
     editor->present();
 }
 
-void Flameshot::hideEditorWindows()
-{
-    for (const QPointer<EditorWindow>& editor : m_editorWindows) {
-        if (editor && editor->isVisible()) {
-            editor->hide();
-            m_hiddenEditors.append(editor);
-        }
-    }
-    if (!m_hiddenEditors.isEmpty()) {
-        emit hiddenEditorsChanged();
-    }
-}
-
 void Flameshot::showEditorWindows()
 {
-    const auto hidden = m_hiddenEditors;
-    m_hiddenEditors.clear();
-    for (const QPointer<EditorWindow>& editor : hidden) {
+    const auto editors = m_editorWindows;
+    for (const QPointer<EditorWindow>& editor : editors) {
         if (editor) {
             showOnActiveSpace(editor);
-            editor->show();
+            if (editor->isMinimized()) {
+                editor->showNormal();
+            } else {
+                editor->show();
+            }
             editor->raise();
         }
-    }
-    if (!hidden.isEmpty()) {
-        emit hiddenEditorsChanged();
     }
 }
 
@@ -1124,9 +1100,9 @@ void Flameshot::updateEditorDockIcon()
 #endif
 }
 
-bool Flameshot::hasHiddenEditorWindows() const
+bool Flameshot::hasEditorWindows() const
 {
-    for (const QPointer<EditorWindow>& editor : m_hiddenEditors) {
+    for (const QPointer<EditorWindow>& editor : m_editorWindows) {
         if (editor) {
             return true;
         }

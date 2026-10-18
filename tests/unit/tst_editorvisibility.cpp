@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Tests for the pure rule that decides when editor windows are hidden.
+// Tests for the pure rule that decides when open editor windows give the
+// app a Dock icon. Editor windows themselves are never hidden when the user
+// switches apps (they used to be; that made them vanish behind Cmd+Tab).
 
 #include "widgets/editorvisibility.h"
 
@@ -9,28 +11,6 @@ class TestEditorVisibility : public QObject
 {
     Q_OBJECT
 private slots:
-    void hidesWhenInactiveAndNoDialog()
-    {
-        QVERIFY(shouldHideEditors(Qt::ApplicationInactive, false));
-    }
-
-    void keepsWhenModalDialogOpen()
-    {
-        QVERIFY(!shouldHideEditors(Qt::ApplicationInactive, true));
-    }
-
-    void keepsWhenActive()
-    {
-        QVERIFY(!shouldHideEditors(Qt::ApplicationActive, false));
-        QVERIFY(!shouldHideEditors(Qt::ApplicationActive, true));
-    }
-
-    void keepsForOtherStates()
-    {
-        QVERIFY(!shouldHideEditors(Qt::ApplicationSuspended, false));
-        QVERIFY(!shouldHideEditors(Qt::ApplicationHidden, false));
-    }
-
     // The Dock icon (and so Cmd+Tab) appears only once the app is inactive,
     // because switching to a Dock app while showing a window in another
     // app's full-screen Space makes macOS jump to the desktop.
@@ -45,13 +25,6 @@ private slots:
         QVERIFY(editorsWantDockIcon(1, false, false));
         // Already a Dock app: keep it while editors stay open
         QVERIFY(editorsWantDockIcon(1, true, true));
-    }
-
-    void reshowOnActivation()
-    {
-        QVERIFY(shouldReshowEditors(Qt::ApplicationActive, true));
-        QVERIFY(!shouldReshowEditors(Qt::ApplicationActive, false));
-        QVERIFY(!shouldReshowEditors(Qt::ApplicationInactive, true));
     }
 };
 
