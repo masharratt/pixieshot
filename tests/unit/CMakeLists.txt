@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Test Svg Network DBus)
 
 set(CMAKE_AUTOMOC ON)
 
@@ -124,3 +124,39 @@ if(APPLE)
   set_tests_properties(tst_animexport PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
 flameshot_add_unit_test(tst_appidentity SOURCES)
+
+# Toolbar robot: a real left click on every toolbar button of a live
+# CaptureWidget, in the overlay and in the windowed editor. Needs the whole
+# app, so it builds every source of the flameshot target except main.cpp.
+# The test redirects all settings, history and save paths into a temp dir and
+# hosts the daemon in-process, so nothing reaches the user's running app.
+get_target_property(_fs_sources flameshot SOURCES)
+set(_robot_sources "")
+foreach(src IN LISTS _fs_sources)
+  if(NOT IS_ABSOLUTE "${src}")
+    set(src "${CMAKE_SOURCE_DIR}/src/${src}")
+  endif()
+  if(src MATCHES "/main\\.cpp$" OR src MATCHES "\\.(qm|rc|icns)$")
+    continue()
+  endif()
+  list(APPEND _robot_sources "${src}")
+endforeach()
+add_executable(tst_toolbarrobot tst_toolbarrobot.cpp ${_robot_sources})
+set_target_properties(tst_toolbarrobot PROPERTIES AUTORCC ON AUTOUIC ON)
+get_target_property(_fs_defs flameshot COMPILE_DEFINITIONS)
+get_target_property(_fs_opts flameshot COMPILE_OPTIONS)
+get_target_property(_fs_incs flameshot INCLUDE_DIRECTORIES)
+get_target_property(_fs_libs flameshot LINK_LIBRARIES)
+list(REMOVE_ITEM _fs_libs project_warnings)
+target_compile_definitions(tst_toolbarrobot PRIVATE ${_fs_defs})
+if(USE_KDSINGLEAPPLICATION)
+  # A directory-level definition in src/, so it does not reach this folder
+  target_compile_definitions(tst_toolbarrobot PRIVATE USE_KDSINGLEAPPLICATION=1)
+endif()
+if(_fs_opts)
+  target_compile_options(tst_toolbarrobot PRIVATE ${_fs_opts})
+endif()
+target_include_directories(tst_toolbarrobot PRIVATE ${_fs_incs} "${CMAKE_SOURCE_DIR}/src")
+target_link_libraries(tst_toolbarrobot PRIVATE ${_fs_libs} Qt6::Test)
+add_test(NAME tst_toolbarrobot COMMAND tst_toolbarrobot)
+set_tests_properties(tst_toolbarrobot PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 300)

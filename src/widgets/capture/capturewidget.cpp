@@ -661,7 +661,9 @@ void CaptureWidget::releaseActiveTool()
             if (m_activeTool->isChanged()) {
                 pushObjectsStateToUndoStack();
             }
-        } else {
+        } else if (m_activeTool != m_pressedButtonTool) {
+            // Only copies are ours. A finishing tool's request (Beautify,
+            // Animate) can land here while the button's own tool is active.
             delete m_activeTool;
         }
         m_activeTool = nullptr;
@@ -1627,9 +1629,17 @@ void CaptureWidget::setState(CaptureToolButton* b)
         auto backup = m_activeTool;
         // The tool is active during the pressed().
         // This must be done in order to handle tool requests correctly.
+        // It stays owned by the button (see releaseActiveTool).
+        QPointer<CaptureToolButton> button(b);
         m_activeTool = b->tool();
+        m_pressedButtonTool = b->tool();
         m_activeTool->pressed(m_context);
+        m_pressedButtonTool = nullptr;
         m_activeTool = backup;
+        if (!button) {
+            // The request took the button with it; nothing left to select
+            return;
+        }
     }
 
     if (b->tool()->isSelectable()) {

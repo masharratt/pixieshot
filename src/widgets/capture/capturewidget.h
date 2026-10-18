@@ -252,6 +252,10 @@ private:
     // Last pressed button
     QPointer<CaptureToolButton> m_activeButton;
     QPointer<CaptureTool> m_activeTool;
+    // A button's own tool while its pressed() runs (see setState). It is
+    // m_activeTool then, so tool requests reach it, but the button owns it:
+    // releaseActiveTool() must never delete it.
+    CaptureTool* m_pressedButtonTool = nullptr;
     bool m_activeToolIsMoved;
     // True while the bend handle of the selected arrow/line is dragged
     bool m_bendDragging = false;

@@ -2,6 +2,7 @@
 // Animated backgrounds must loop exactly, be deterministic, honour the
 // Beautify colours, and composite frames whose shot matches the still.
 
+#include "sanitizer.h"
 #include "utils/animatedbg.h"
 #include "utils/animatedframe.h"
 #include "utils/backgroundfx.h"
@@ -354,6 +355,7 @@ private slots:
     // target if CI ever runs these in parallel with heavy jobs
     void fullHdFrameWithGlassIsFast()
     {
+        SKIP_TIMING_UNDER_SANITIZER();
         // A 1920x1080 canvas: the shot plus padding, glass and shadow
         EffectSettings s = beautify(true);
         s.paddingPx = 64;

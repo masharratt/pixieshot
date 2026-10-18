@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Tests for the pure image effects (border, rounded corners, drop shadow).
 
+#include "sanitizer.h"
 #include "utils/backgroundfx.h"
 #include "utils/beautifylayout.h"
 #include "utils/imageeffects.h"
@@ -729,6 +730,7 @@ private slots:
     // order-of-magnitude regressions there.
     void performanceOnLargeCapture()
     {
+        SKIP_TIMING_UNDER_SANITIZER();
         const QImage src = uiLike(4000, 3000);
         EffectSettings s;
         s.cornerRadius = 12;

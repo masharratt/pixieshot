@@ -174,7 +174,7 @@ QVariant BoundedInt::fallback()
 
 QString BoundedInt::expected()
 {
-    return QStringLiteral("number between %1 and %2").arg(m_min, m_max);
+    return QStringLiteral("number between %1 and %2").arg(m_min).arg(m_max);
 }
 
 // LOWER BOUNDED INT

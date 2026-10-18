@@ -2,6 +2,7 @@
 
 #include "platform/windowspace.h"
 
+#include <QGuiApplication>
 #include <QWidget>
 
 #import <AppKit/AppKit.h>
@@ -15,7 +16,8 @@
 
 void showOnActiveSpace(QWidget* window)
 {
-    if (!window) {
+    // winId() is an NSView only on the Cocoa platform plugin (not offscreen)
+    if (!window || QGuiApplication::platformName() != QLatin1String("cocoa")) {
         return;
     }
     // winId() creates the native window if it does not exist yet

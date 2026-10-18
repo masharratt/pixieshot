@@ -3,6 +3,7 @@
 // tall image at known scroll positions, and the stitched result must equal
 // the source pixel for pixel.
 
+#include "sanitizer.h"
 #include "utils/scrollstitch.h"
 
 #include <QElapsedTimer>
@@ -365,6 +366,7 @@ private slots:
 
     void fastEnoughForLiveCapture()
     {
+        SKIP_TIMING_UNDER_SANITIZER();
         // 1500x900 frames, 60 px apart: at least 30 matches a second
         const QImage content = noiseImage(1500, 900 + 60 * 40, 17);
         QList<QImage> frames;
