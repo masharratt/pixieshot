@@ -1,6 +1,6 @@
 # Feature Status (masharratt/flameshot fork)
 
-**Last Updated:** 2026-10-18 (Animate: annotations draw themselves in)
+**Last Updated:** 2026-10-18 (Style packs: preview, description and ingredient chips)
 
 | Token | Meaning |
 |-------|---------|
@@ -29,7 +29,7 @@ Plan: `planning/PLAN_sharex_fork.md` (local, not committed).
 | Animated backgrounds | dev | Animate button (macOS) saves the Beautify look over a looping Aurora, Gradient shift, Blobs or Twinkle background as MP4 and/or GIF next to the capture, with toast, history entry and file URL copied. Overlay also saves the still. Set on the Workflows tab. | Beautify, GIF / MP4 recording | Not yet checked by hand. GIF ~6 MB for 5 s. Editor Animate after Beautify nests the frame. |
 | Animate shot motion and palettes | dev | Animate can tilt the shot with a light sweep or float it (`animMotion`), adds Flow and Silk backgrounds, multi-stop palettes with Sunset Pop, Midnight and Ocean presets (`effectPalette`), and a Thumbnail preview. | Animated backgrounds, Beautify | Not yet checked by hand. Glass refraction is approximate while tilted. |
 | Animate draw-in annotations | dev | Animate draws each annotation in, in creation order (strokes trace, arrow heads pop, text types, counters pop), holds with the shot motion, then fades to loop. Pixelate stays fixed. Static option (`animAnnotations`). | Animated backgrounds, Capture projects | Not yet checked by hand. Centred or right-aligned text types from the left of each line. |
-| Style packs | dev | One `.pixiestyle` JSON file holds every `effect*`/`anim*` setting; Apply, Save current, Import, Export on the Workflows tab. Values go through each option's own check; other keys ignored with a warning. Five built-ins. | Beautify, Animated backgrounds | Not yet checked by hand. Packs only set keys they carry. |
+| Style packs | dev | A `.pixiestyle` JSON file holds a whole look; Apply, Save, Import, Export on the Workflows tab. Shows a live preview, a one-line description and ingredient chips per pack before Apply. Five built-ins. | Beautify, Animated backgrounds | Not yet checked by hand. Packs only set keys they carry. |
 | Re-editable screenshots | dev | Annotated captures keep a project (base image plus annotations) with their history entry. Edit again, the after-edit thumbnail and the toast reopen it with objects still editable; the editor can Save and Open .fsproj files. | Capture history | Not yet checked by hand. Project files are kept until the history entry is trimmed or removed. |
 | Capture timer | dev | Option `captureDelaySec` (0 to 10) shows a countdown before hotkey and tray region captures start. Click the countdown to cancel. CLI --delay wins; recordings are not delayed. | Capture overlay | Not yet checked by hand. |
 | Copy Text (OCR) | dev | Toolbar button reads the text and any QR code in the selection with Apple Vision, copies it to the clipboard and closes the capture. | macOS Vision framework | Not yet checked by hand. macOS only, hidden elsewhere. QR path has no automated test. |

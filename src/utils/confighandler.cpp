@@ -268,24 +268,32 @@ static QMap<QString, QSharedPointer<KeySequence>> recognizedShortcuts = {
 
 // CLASS CONFIGHANDLER
 
-EffectSettings ConfigHandler::effectSettings()
+EffectSettings ConfigHandler::effectSettings(const QVariantMap& overlay)
 {
+    // The one place that builds EffectSettings. A key in `overlay` (a style
+    // pack's value) wins over the saved one; nothing is written.
+    const auto get = [&](const char* key) {
+        const QString k = QString::fromLatin1(key);
+        return overlay.contains(k) ? valueHandler(k)->value(overlay.value(k))
+                                   : value(k);
+    };
     EffectSettings settings;
-    settings.borderPx = effectBorderPx();
-    settings.borderColor = effectBorderColor();
-    settings.cornerRadius = effectCornerRadius();
-    settings.shadow = effectShadow();
-    settings.paddingPx = effectPadding();
-    settings.backgroundMode = static_cast<BackgroundMode>(effectBackground());
-    settings.backgroundColor1 = effectBackgroundColor1();
-    settings.backgroundColor2 = effectBackgroundColor2();
-    settings.aspect = effectAspect();
-    settings.autoBalance = effectAutoBalance();
-    settings.autoColors = effectAutoColors();
-    settings.glass = effectGlass();
-    settings.glassPx = effectGlassPx();
-    settings.grain = effectGrain();
-    settings.palette = beautifypalette::parse(effectPalette());
+    settings.borderPx = get("effectBorderPx").toInt();
+    settings.borderColor = get("effectBorderColor").value<QColor>();
+    settings.cornerRadius = get("effectCornerRadius").toInt();
+    settings.shadow = get("effectShadow").toBool();
+    settings.paddingPx = get("effectPadding").toInt();
+    settings.backgroundMode =
+      static_cast<BackgroundMode>(get("effectBackground").toInt());
+    settings.backgroundColor1 = get("effectBackgroundColor1").value<QColor>();
+    settings.backgroundColor2 = get("effectBackgroundColor2").value<QColor>();
+    settings.aspect = get("effectAspect").toInt();
+    settings.autoBalance = get("effectAutoBalance").toBool();
+    settings.autoColors = get("effectAutoColors").toBool();
+    settings.glass = get("effectGlass").toBool();
+    settings.glassPx = get("effectGlassPx").toInt();
+    settings.grain = get("effectGrain").toInt();
+    settings.palette = beautifypalette::parse(get("effectPalette").toString());
     return settings;
 }
 

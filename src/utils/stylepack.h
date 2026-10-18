@@ -12,7 +12,10 @@
 // Beautify / glass / background / Animate look, applied in one click.
 //
 //   {"format":"pixiestyle","version":1,"name":"...","author":"...",
-//    "settings":{"<configKey>": value, ...}}
+//    "description":"...", "settings":{"<configKey>": value, ...}}
+//
+// "author" and "description" are optional; unknown top-level fields are
+// ignored, so a newer pack still opens.
 //
 // Settings keys are ConfigHandler option names, limited by isStyleKey(), and
 // every value goes through that option's own ValueHandler. Packs are data
@@ -22,6 +25,8 @@ namespace stylepack {
 
 constexpr int kFormatVersion = 1;
 constexpr qint64 kMaxFileBytes = 64 * 1024;
+// Longer descriptions are cut when read
+constexpr int kMaxDescriptionLength = 200;
 
 QString fileSuffix(); // "pixiestyle", without the dot
 
@@ -29,6 +34,8 @@ struct Pack
 {
     QString name;
     QString author;
+    // One short line shown under the preview; optional
+    QString description;
     // Option key -> plain value: bool, int or string
     QVariantMap settings;
 };

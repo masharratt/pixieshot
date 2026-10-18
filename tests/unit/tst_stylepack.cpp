@@ -13,6 +13,7 @@
 #include "utils/appidentity.h"
 #include "utils/confighandler.h"
 #include "utils/stylepack.h"
+#include "utils/stylepackpreview.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -23,6 +24,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLabel>
 #include <QPushButton>
 #include <QSignalSpy>
 #include <QSpinBox>
@@ -494,6 +496,192 @@ private slots:
         }
         QVERIFY(glass);
         QVERIFY(glass->isChecked());
+    }
+
+    void descriptionRoundTrips()
+    {
+        stylepack::Pack pack;
+        pack.name = QStringLiteral("Described");
+        pack.description = QStringLiteral("Dark navy glass. Great for dark mode.");
+        pack.settings[QStringLiteral("effectPadding")] = 40;
+        const stylepack::ParseResult r =
+          stylepack::parse(stylepack::serialize(pack));
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QCOMPARE(r.pack.description, pack.description);
+    }
+
+    void missingDescriptionIsFine()
+    {
+        const stylepack::ParseResult r = stylepack::parse(
+          packJson({ { QStringLiteral("effectPadding"), 40 } }));
+        QVERIFY(r.ok);
+        QVERIFY(r.pack.description.isEmpty());
+        // Not written when empty, so older readers see the same file
+        stylepack::Pack pack;
+        pack.name = QStringLiteral("Plain");
+        QVERIFY(!stylepack::serialize(pack).contains("description"));
+    }
+
+    void unknownTopLevelFieldsAreTolerated()
+    {
+        QJsonObject root = QJsonDocument::fromJson(packJson({})).object();
+        root[QStringLiteral("description")] = QStringLiteral("Hi");
+        root[QStringLiteral("somethingNewer")] = 5;
+        const stylepack::ParseResult r =
+          stylepack::parse(QJsonDocument(root).toJson());
+        QVERIFY(r.ok);
+        QCOMPARE(r.pack.description, QStringLiteral("Hi"));
+        QVERIFY(r.warnings.isEmpty());
+    }
+
+    void everyBuiltInHasADescription()
+    {
+        const auto entries = stylepack::listPacks(QString());
+        QVERIFY(entries.size() >= 5);
+        for (const auto& e : entries) {
+            const stylepack::ParseResult r = stylepack::loadFile(e.path);
+            QVERIFY2(r.ok, qPrintable(e.path));
+            QVERIFY2(!r.pack.description.isEmpty(), qPrintable(e.path));
+        }
+    }
+
+    void overlayOnEmptyMapMatchesConfigLoader()
+    {
+        ConfigHandler config;
+        config.setEffectPadding(33);
+        config.setEffectGlass(true);
+        const EffectSettings a = config.effectSettings();
+        const EffectSettings b = config.effectSettings(QVariantMap());
+        QCOMPARE(b.paddingPx, a.paddingPx);
+        QCOMPARE(b.glass, a.glass);
+        QCOMPARE(b.cornerRadius, a.cornerRadius);
+        QCOMPARE(b.backgroundMode, a.backgroundMode);
+        QCOMPARE(b.backgroundColor1, a.backgroundColor1);
+        QCOMPARE(b.grain, a.grain);
+        QCOMPARE(a.paddingPx, 33);
+    }
+
+    void overlayWinsOverConfigWithoutWritingIt()
+    {
+        ConfigHandler config;
+        config.setEffectPadding(33);
+        const EffectSettings s = config.effectSettings(
+          { { QStringLiteral("effectPadding"), 99 },
+            { QStringLiteral("effectBackgroundColor1"),
+              QStringLiteral("#102030") },
+            { QStringLiteral("effectPalette"),
+              QStringLiteral("#ff0000,#00ff00") } });
+        QCOMPARE(s.paddingPx, 99);
+        QCOMPARE(s.backgroundColor1, QColor(0x10, 0x20, 0x30));
+        QCOMPARE(s.palette.size(), 2);
+        QCOMPARE(ConfigHandler().effectPadding(), 33);
+    }
+
+    void previewsOfDifferentPacksDiffer()
+    {
+        const auto load = [](const char* name) {
+            return stylepack::loadFile(stylepack::builtInDir() +
+                                       QStringLiteral("/") +
+                                       QString::fromLatin1(name) +
+                                       QStringLiteral(".pixiestyle"))
+              .pack;
+        };
+        const stylepack::Pack a = load("midnight-glass");
+        const stylepack::Pack b = load("clean-paper");
+        const QImage ia = stylepackpreview::renderBeautify(a, 200);
+        const QImage ib = stylepackpreview::renderBeautify(b, 200);
+        QVERIFY(!ia.isNull() && !ib.isNull());
+        QVERIFY(ia != ib);
+        QVERIFY(stylepackpreview::renderAnimate(a, 200) !=
+                stylepackpreview::renderAnimate(b, 200));
+        // Same pack twice is stable (so the cache is safe)
+        QCOMPARE(stylepackpreview::renderBeautify(a, 200), ia);
+    }
+
+    void renderingAPreviewDoesNotChangeTheConfig()
+    {
+        // Bug guard: the preview must never write the pack into the config
+        ConfigHandler config;
+        const QVariantMap before = stylepack::fromCurrentConfig(
+                                     QStringLiteral("x")).settings;
+        const stylepack::Pack p = stylepack::loadFile(
+          stylepack::builtInDir() +
+          QStringLiteral("/midnight-glass.pixiestyle")).pack;
+        stylepackpreview::renderBeautify(p, 160);
+        stylepackpreview::renderAnimate(p, 160);
+        stylepackpreview::chips(p);
+        QCOMPARE(stylepack::fromCurrentConfig(QStringLiteral("x")).settings,
+                 before);
+        QCOMPARE(ConfigHandler().effectPadding(), 64);
+    }
+
+    void chipsDeriveFromSettings()
+    {
+        stylepack::Pack p;
+        p.settings[QStringLiteral("effectBackground")] = 2;
+        p.settings[QStringLiteral("effectGlass")] = true;
+        p.settings[QStringLiteral("animStyle")] = 4;
+        p.settings[QStringLiteral("effectGrain")] = 0;
+        QStringList chips = stylepackpreview::chips(p);
+        QVERIFY2(chips.contains(QStringLiteral("Gradient")),
+                 qPrintable(chips.join("|")));
+        QVERIFY(chips.contains(QStringLiteral("Glass")));
+        QVERIFY(chips.contains(QStringLiteral("Animate: Flow")));
+
+        p.settings[QStringLiteral("effectBackground")] = 3;
+        p.settings[QStringLiteral("effectGlass")] = false;
+        p.settings[QStringLiteral("effectGrain")] = 20;
+        chips = stylepackpreview::chips(p);
+        QVERIFY(chips.contains(QStringLiteral("From screenshot")));
+        QVERIFY(!chips.contains(QStringLiteral("Glass")));
+        QVERIFY(chips.contains(QStringLiteral("Grain")));
+    }
+
+    void rowShowsPreviewAndDescriptionForTheSelectedPack()
+    {
+        StylePackRow row;
+        auto* combo = row.findChild<QComboBox*>();
+        QVERIFY(combo);
+        QLabel* description = row.findChild<QLabel*>(
+          QStringLiteral("stylePackDescription"));
+        QLabel* beautify =
+          row.findChild<QLabel*>(QStringLiteral("stylePackBeautify"));
+        QVERIFY(description && beautify);
+        combo->setCurrentIndex(combo->findData(
+          stylepack::builtInDir() + QStringLiteral("/midnight-glass.pixiestyle")));
+        const QPixmap first = beautify->pixmap();
+        QVERIFY(!first.isNull());
+        QVERIFY(!description->text().isEmpty());
+        const QString firstText = description->text();
+        combo->setCurrentIndex(combo->findData(
+          stylepack::builtInDir() + QStringLiteral("/clean-paper.pixiestyle")));
+        QVERIFY(beautify->pixmap().toImage() != first.toImage());
+        QVERIFY(description->text() != firstText);
+    }
+
+    void savesRowSamplesWhenAskedTo()
+    {
+        // Visual check for people: STYLEPACK_SAMPLES_DIR=<dir> writes one PNG
+        // of the row per built-in pack. Skipped otherwise.
+        const QString dir = qEnvironmentVariable("STYLEPACK_SAMPLES_DIR");
+        if (dir.isEmpty()) {
+            QSKIP("STYLEPACK_SAMPLES_DIR not set");
+        }
+        QVERIFY(QDir().mkpath(dir));
+        StylePackRow row;
+        row.resize(520, row.sizeHint().height());
+        auto* combo = row.findChild<QComboBox*>();
+        QVERIFY(combo);
+        for (int i = 0; i < combo->count(); ++i) {
+            const QString path = combo->itemData(i, Qt::UserRole).toString();
+            if (!path.startsWith(stylepack::builtInDir())) {
+                continue;
+            }
+            combo->setCurrentIndex(i);
+            row.resize(520, row.sizeHint().height());
+            const QString name = QFileInfo(path).completeBaseName();
+            QVERIFY(row.grab().save(dir + "/" + name + ".png"));
+        }
     }
 
     void refusesToApplyWhenConfigHasError()

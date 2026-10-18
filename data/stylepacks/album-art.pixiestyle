@@ -3,6 +3,7 @@
     "version": 1,
     "name": "Album Art",
     "author": "Pixieshot",
+    "description": "The shot blurred into its own backdrop, in a frosted glass frame. Feels like cover art.",
     "settings": {
         "animStyle": 2,
         "effectAspect": 0,

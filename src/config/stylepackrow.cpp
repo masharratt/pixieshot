@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QDateTime>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
@@ -17,10 +18,14 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include "utils/stylepackpreview.h"
+
 namespace {
 
 // Combo item data: path of the pack file
 constexpr int kPathRole = Qt::UserRole;
+// Logical width of each preview thumbnail
+constexpr int kThumbWidth = 190;
 
 QString fileFilter()
 {
@@ -49,6 +54,36 @@ StylePackRow::StylePackRow(QWidget* parent)
     row->addWidget(apply);
     layout->addLayout(row);
 
+    // Preview: what the selected pack does to a sample shot
+    auto* previews = new QHBoxLayout();
+    const auto addThumb = [&](QLabel*& label,
+                              const QString& objectName,
+                              const QString& caption) {
+        auto* column = new QVBoxLayout();
+        label = new QLabel(this);
+        label->setObjectName(objectName);
+        label->setAlignment(Qt::AlignCenter);
+        label->setMinimumSize(kThumbWidth, kThumbWidth * 5 / 8);
+        column->addWidget(label);
+        auto* text = new QLabel(caption, this);
+        text->setAlignment(Qt::AlignCenter);
+        column->addWidget(text);
+        previews->addLayout(column);
+    };
+    addThumb(m_beautify, QStringLiteral("stylePackBeautify"), tr("Beautify"));
+    addThumb(m_animate, QStringLiteral("stylePackAnimate"), tr("Animate"));
+    previews->addStretch();
+    layout->addLayout(previews);
+
+    m_description = new QLabel(this);
+    m_description->setObjectName(QStringLiteral("stylePackDescription"));
+    m_description->setWordWrap(true);
+    layout->addWidget(m_description);
+    m_chips = new QLabel(this);
+    m_chips->setObjectName(QStringLiteral("stylePackChips"));
+    m_chips->setWordWrap(true);
+    layout->addWidget(m_chips);
+
     auto* actions = new QHBoxLayout();
     auto* save = new QPushButton(tr("Save current as pack..."), this);
     auto* import = new QPushButton(tr("Import..."), this);
@@ -74,7 +109,51 @@ StylePackRow::StylePackRow(QWidget* parent)
       exportButton, &QPushButton::clicked, this, &StylePackRow::exportSelected);
     connect(reveal, &QPushButton::clicked, this, &StylePackRow::revealFolder);
 
+    connect(m_combo,
+            &QComboBox::currentIndexChanged,
+            this,
+            &StylePackRow::updatePreview);
     reload();
+}
+
+void StylePackRow::updatePreview()
+{
+    const QString path = m_combo->currentData(kPathRole).toString();
+    const stylepack::ParseResult r =
+      path.isEmpty() ? stylepack::ParseResult() : stylepack::loadFile(path);
+    if (!r.ok) {
+        m_beautify->clear();
+        m_animate->clear();
+        m_description->setText(path.isEmpty() ? QString() : r.error);
+        m_chips->clear();
+        return;
+    }
+    // A saved-over pack file keeps its path, so its stamp is part of the key
+    const QString key =
+      path + QLatin1Char('|') +
+      QString::number(QFileInfo(path).lastModified().toMSecsSinceEpoch());
+    auto it = m_cache.find(key);
+    if (it == m_cache.end()) {
+        const qreal dpr = devicePixelRatioF();
+        const int px = int(kThumbWidth * dpr);
+        const auto toPixmap = [&](const QImage& image) {
+            QPixmap pixmap = QPixmap::fromImage(image);
+            pixmap.setDevicePixelRatio(dpr);
+            return pixmap;
+        };
+        Thumbs t;
+        t.beautify = toPixmap(stylepackpreview::renderBeautify(r.pack, px));
+        t.animate = toPixmap(stylepackpreview::renderAnimate(r.pack, px));
+        t.description = r.pack.description;
+        t.chips = stylepackpreview::chips(r.pack).join(
+          QStringLiteral("  \u00b7  "));
+        it = m_cache.insert(key, t);
+    }
+    m_beautify->setPixmap(it->beautify);
+    m_animate->setPixmap(it->animate);
+    m_description->setText(it->description);
+    m_description->setVisible(!it->description.isEmpty());
+    m_chips->setText(it->chips);
 }
 
 void StylePackRow::reload(const QString& selectPath)
@@ -90,6 +169,7 @@ void StylePackRow::reload(const QString& selectPath)
     if (index >= 0) {
         m_combo->setCurrentIndex(index);
     }
+    updatePreview();
 }
 
 void StylePackRow::showStatus(const QString& message,
@@ -115,6 +195,7 @@ void StylePackRow::applySelected()
         return;
     }
     const QStringList warnings = r.warnings + stylepack::applyToConfig(r.pack);
+    m_cache.clear();
     emit applied();
     showStatus(tr("Applied \"%1\".").arg(r.pack.name), warnings);
 }

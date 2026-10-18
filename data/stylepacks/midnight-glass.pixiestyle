@@ -3,6 +3,7 @@
     "version": 1,
     "name": "Midnight Glass",
     "author": "Pixieshot",
+    "description": "Dark navy-to-violet glass with a soft glow. Great for dark-mode apps.",
     "settings": {
         "animStyle": 0,
         "effectAspect": 0,

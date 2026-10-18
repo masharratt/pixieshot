@@ -3,6 +3,7 @@
     "version": 1,
     "name": "Clean Paper",
     "author": "Pixieshot",
+    "description": "Soft white paper with a gentle shadow and a quiet sparkle. Great for docs and light-mode apps.",
     "settings": {
         "animStyle": 3,
         "effectAspect": 0,

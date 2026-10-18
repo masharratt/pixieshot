@@ -2,6 +2,7 @@
 
 #include "workflowsconf.h"
 #include "config/stylepackrow.h"
+#include "utils/stylepackpreview.h"
 #include "tools/animannotations.h"
 #include "utils/animatedframe.h"
 #include "utils/beautifypalette.h"
@@ -69,41 +70,6 @@ constexpr int kAnimPreviewIntervalMs = 50;
 // Logical widths of the Animate previews
 constexpr int kAnimPreviewWidth = 300;
 constexpr int kAnimThumbWidth = 200;
-
-// A window-sized stand-in for a capture (title bar, sidebar, lines of
-// "text", a chart card and a button) so the previews show the real balance
-// of shot and background, and the thumbnail shows how small text reads
-QImage animPreviewSample()
-{
-    QImage sample(1280, 800, QImage::Format_ARGB32_Premultiplied);
-    sample.fill(QColor(245, 246, 250));
-    QPainter p(&sample);
-    p.fillRect(QRect(0, 0, 1280, 40), QColor(228, 230, 236));
-    const QColor dots[] = { QColor(255, 95, 87), QColor(254, 188, 46), QColor(40, 200, 64) };
-    p.setRenderHint(QPainter::Antialiasing);
-    for (int i = 0; i < 3; ++i) {
-        p.setPen(Qt::NoPen);
-        p.setBrush(dots[i]);
-        p.drawEllipse(QPoint(24 + 22 * i, 20), 7, 7);
-    }
-    p.fillRect(QRect(0, 40, 240, 760), QColor(236, 238, 244));
-    for (int i = 0; i < 9; ++i) {
-        p.fillRect(QRect(28, 80 + 44 * i, 140 - (i * 23) % 60, 12), QColor(120, 126, 140));
-    }
-    p.fillRect(QRect(290, 80, 520, 30), QColor(36, 40, 52));
-    for (int i = 0; i < 6; ++i) {
-        p.fillRect(QRect(290, 140 + 30 * i, 900 - (i * 137) % 260, 12),
-                   QColor(90, 96, 110));
-    }
-    QLinearGradient chart(290, 360, 1190, 720);
-    chart.setColorAt(0, QColor(70, 130, 220));
-    chart.setColorAt(1, QColor(240, 170, 60));
-    p.setBrush(chart);
-    p.drawRoundedRect(QRect(290, 340, 900, 360), 16, 16);
-    p.setBrush(QColor(236, 72, 96));
-    p.drawRoundedRect(QRect(1040, 730, 150, 44), 10, 10);
-    return sample;
-}
 
 // Annotations on the sample (a box round the heading, an arrow at the
 // button), stored as a project stores them, so the preview shows them
@@ -461,7 +427,7 @@ void WorkflowsConf::rebuildAnimPreview()
     if (m_animStyle == nullptr) {
         return;
     }
-    static const QImage sample = animPreviewSample();
+    static const QImage sample = stylepackpreview::sampleShot();
     if (!m_animPreviewAnnotations) {
         AnimSource source;
         source.base = sample;
