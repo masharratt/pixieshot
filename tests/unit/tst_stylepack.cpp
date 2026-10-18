@@ -97,6 +97,11 @@ private slots:
         QVERIFY(stylepack::isStyleKey(QStringLiteral("effectGlass")));
         QVERIFY(stylepack::isStyleKey(QStringLiteral("animStyle")));
         QVERIFY(!stylepack::isStyleKey(QStringLiteral("beautifyAlways")));
+        // Delivery choices, not look
+        QVERIFY(!stylepack::isStyleKey(QStringLiteral("animFormat")));
+        QVERIFY(!stylepack::isStyleKey(QStringLiteral("animFps")));
+        QVERIFY(stylepack::isStyleKey(QStringLiteral("animMotion")));
+        QVERIFY(stylepack::isStyleKey(QStringLiteral("effectPalette")));
         QVERIFY(!stylepack::isStyleKey(QStringLiteral("savePath")));
         QVERIFY(!stylepack::isStyleKey(QStringLiteral("startupLaunch")));
         QVERIFY(
@@ -351,6 +356,35 @@ private slots:
                                QStringLiteral("Sunset Pop") }));
         // Built-ins never touch behaviour options
         QCOMPARE(ConfigHandler().beautifyAlways(), false);
+    }
+
+    // Bug: built-ins omitted effectPalette, so applying Sunset Pop and then
+    // Ocean kept Sunset's five-colour palette. A built-in must set every
+    // style key so switching packs never inherits the previous look.
+    void builtInsSetEveryStyleKey_bugPaletteLeaksBetweenPacks()
+    {
+        const QStringList all = stylepack::styleKeys();
+        QVERIFY2(all.size() > 10, qPrintable(all.join(",")));
+        int checked = 0;
+        for (const stylepack::Entry& e :
+             stylepack::listPacks(stylepack::userStylesDir())) {
+            if (!e.builtIn) {
+                continue;
+            }
+            const stylepack::ParseResult r = stylepack::loadFile(e.path);
+            QVERIFY2(r.ok, qPrintable(e.path));
+            QStringList missing;
+            for (const QString& key : all) {
+                if (!r.pack.settings.contains(key)) {
+                    missing << key;
+                }
+            }
+            QVERIFY2(missing.isEmpty(),
+                     qPrintable(e.name + " missing=[" + missing.join(",") +
+                                "]"));
+            ++checked;
+        }
+        QCOMPARE(checked, 5);
     }
 
     void midnightGlassValues()

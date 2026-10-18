@@ -18,6 +18,9 @@
         "effectGlassPx": 18,
         "effectGrain": 15,
         "effectPadding": 80,
-        "effectShadow": true
+        "effectShadow": true,
+        "effectPalette": "",
+        "animMotion": 1,
+        "animDurationSec": 5
     }
 }

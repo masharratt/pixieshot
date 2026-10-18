@@ -4,7 +4,7 @@
     "name": "Sunset Pop",
     "author": "Pixieshot",
     "settings": {
-        "animStyle": 1,
+        "animStyle": 4,
         "effectAspect": 0,
         "effectAutoBalance": false,
         "effectAutoColors": false,
@@ -18,6 +18,9 @@
         "effectGlassPx": 18,
         "effectGrain": 0,
         "effectPadding": 64,
-        "effectShadow": true
+        "effectShadow": true,
+        "effectPalette": "#ffd601,#ff6118,#ee30fb,#fb76fa,#7232f1",
+        "animMotion": 1,
+        "animDurationSec": 5
     }
 }
