@@ -13,11 +13,15 @@
 #include "config/cacheutils.h"
 #include "config/generalconf.h"
 #include "core/flameshot.h"
+#if defined(Q_OS_MACOS)
+#include "core/animexportjob.h"
+#endif
 #include "core/qguiappcurrentscreen.h"
 #include "tools/abstracttwopointtool.h"
 #include "tools/beautify/beautifyaction.h"
 #include "tools/copy/copytool.h"
 #include "utils/abstractlogger.h"
+#include "utils/beautifylayout.h"
 #include "utils/imageeffects.h"
 #include "utils/screengrabber.h"
 #include "core/capturefirstrequest.h"
@@ -395,6 +399,8 @@ void CaptureWidget::initButtons()
         // Like Accept, Beautify needs tasks to run on the finished capture
         allButtonTypes.removeOne(CaptureTool::TYPE_BEAUTIFY);
         visibleButtonTypes.removeOne(CaptureTool::TYPE_BEAUTIFY);
+        allButtonTypes.removeOne(CaptureTool::TYPE_ANIMATE);
+        visibleButtonTypes.removeOne(CaptureTool::TYPE_ANIMATE);
     } else {
         // Remove irrelevant buttons from both lists
         for (auto* buttonList : { &allButtonTypes, &visibleButtonTypes }) {
@@ -1659,6 +1665,9 @@ void CaptureWidget::handleToolSignal(CaptureTool::Request r)
         case CaptureTool::REQ_BEAUTIFY:
             handleBeautifyRequest();
             break;
+        case CaptureTool::REQ_ANIMATE:
+            handleAnimateRequest();
+            break;
         case CaptureTool::REQ_HIDE_GUI:
             hide();
             break;
@@ -2570,6 +2579,70 @@ void CaptureWidget::handleBeautifyRequest()
     }
 }
 
+void CaptureWidget::handleAnimateRequest()
+{
+    if (!m_editMode) {
+        // Finish like Beautify; exportCapture also writes the animation
+        m_context.request.addTask(CaptureRequest::BEAUTIFY);
+        m_context.request.addTask(CaptureRequest::ANIMATE);
+        handleToolSignal(CaptureTool::REQ_CAPTURE_DONE_OK);
+        close();
+        return;
+    }
+    // Windowed editor: export and stay open. Animate applies the effects
+    // itself, so it starts from un-beautified pixels (see animateBaseFor).
+    commitCurrentTool();
+    const BeautifyEditCommand* beautify = nullptr;
+    bool beautifyIsNewest = false;
+    bool canvasChangedSince = false;
+    for (int i = 0; i < m_undoStack.index(); ++i) {
+        const QUndoCommand* cmd = m_undoStack.command(i);
+        if (cmd->id() == BeautifyEditCommand::kId) {
+            beautify = static_cast<const BeautifyEditCommand*>(cmd);
+            canvasChangedSince = false;
+        } else if (beautify != nullptr &&
+                   dynamic_cast<const ExpandCanvasCommand*>(cmd) != nullptr) {
+            canvasChangedSince = true;
+        }
+        beautifyIsNewest = beautify != nullptr && cmd == beautify;
+    }
+    const qreal dpr = m_context.origScreenshot.devicePixelRatio();
+    QImage base;
+    switch (animateBaseFor(beautify != nullptr, beautifyIsNewest, canvasChangedSince)) {
+        case AnimateBase::BeforeBeautify:
+            base = flattenEditState(beautify->before());
+            break;
+        case AnimateBase::BeautifiedShot:
+            base = flattenEditState(currentEditCanvasState())
+                     .copy(beautify->shotSource());
+            break;
+        case AnimateBase::CurrentImage:
+            base = flattenEditState(currentEditCanvasState());
+            break;
+    }
+    base.setDevicePixelRatio(dpr);
+#if defined(Q_OS_MACOS)
+    AnimExportJob::start(base, m_context.request.path());
+#endif
+}
+
+QImage CaptureWidget::flattenEditState(const EditCanvasState& state)
+{
+    // The annotations drawn on the canvas, without selection outlines
+    QPixmap canvas = state.canvas;
+    // Not copy-constructible; assignment copies the tool list
+    CaptureToolObjects objects;
+    objects = state.objects;
+    for (const auto& tool : objects.captureToolObjects()) {
+        if (tool) {
+            processPixmapWithTool(&canvas, tool);
+        }
+    }
+    QImage image = canvas.copy(state.imageDevice).toImage();
+    image.setDevicePixelRatio(state.canvas.devicePixelRatio());
+    return image;
+}
+
 // The result matches what Accept + Beautify exports from the overlay: the
 // annotations are part of the image the effects are applied to (rounded
 // corners and the frame clip them the same way). They stop being separate
@@ -2587,9 +2660,13 @@ void CaptureWidget::beautifyEditImage()
     const qreal dpr = m_context.origScreenshot.devicePixelRatio();
     QImage flat = m_context.screenshot.copy(m_editImageRectDevice).toImage();
     flat.setDevicePixelRatio(dpr);
-    QImage beautified =
-      imageeffects::applyEffects(flat, ConfigHandler().effectSettings());
+    const EffectSettings settings = ConfigHandler().effectSettings();
+    QImage beautified = imageeffects::applyEffects(flat, settings);
     beautified.setDevicePixelRatio(dpr);
+    // Where the plain pixels land, so Animate can take them back out
+    const QSize sourceSize =
+      settings.autoBalance ? imageeffects::autoBalance(flat).size() : flat.size();
+    const QRect shotSource = beautifyLayout(sourceSize, settings, dpr).frame;
 
     // Lay the result out like a freshly opened image, then read it back
     initEditCanvas(QPixmap::fromImage(beautified));
@@ -2597,7 +2674,7 @@ void CaptureWidget::beautifyEditImage()
     m_captureToolObjects.clear();
     const EditCanvasState after = currentEditCanvasState();
     // push() runs redo(), which applies `after`
-    m_undoStack.push(new BeautifyEditCommand(this, before, after));
+    m_undoStack.push(new BeautifyEditCommand(this, before, after, shotSource));
 }
 
 EditCanvasState CaptureWidget::currentEditCanvasState()

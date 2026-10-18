@@ -49,6 +49,9 @@ target_sources(
           ruler/rulertool.cpp)
 target_sources(flameshot PRIVATE beautify/beautifytool.h beautify/beautifytool.cpp
                                  beautify/beautifyaction.h beautify/beautifyaction.cpp)
+if (APPLE)
+  target_sources(flameshot PRIVATE animate/animatetool.h animate/animatetool.cpp)
+endif ()
 if(APPLE)
   # Copy Text needs Apple Vision
   target_sources(flameshot PRIVATE ocr/ocrtool.h ocr/ocrtool.cpp)

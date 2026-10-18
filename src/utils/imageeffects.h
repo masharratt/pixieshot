@@ -61,6 +61,20 @@ QImage dropShadow(const QImage& src,
                   const QPoint& offset,
                   const QColor& color);
 
+// The shadow src's alpha casts, without src's own pixels, on the canvas
+// beautifygeometry::shadowStep gives
+QImage shadowLayer(const QImage& src,
+                   int blur,
+                   const QPoint& offset,
+                   const QColor& color);
+
+// The shadow the glass bezel casts: a plate of bezelSize physical pixels
+// rounded by outerRadius, shadowed with the settings' shadow options
+QImage glassShadow(QSize bezelSize,
+                   qreal outerRadius,
+                   const EffectSettings& settings,
+                   qreal dpr);
+
 // Canvas grows by 2 * padding (logical) on each axis, src is centered. With
 // BackgroundMode::None the padding is transparent. A background fills the whole
 // canvas, even when padding is 0. A non-zero aspect (see EffectSettings) then

@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "workflowsconf.h"
+#include "utils/animatedframe.h"
 #include "platform/screenrecorder.h"
 #include "utils/confighandler.h"
 #include "utils/imageeffects.h"
 
 #include <QCheckBox>
+#include <QEvent>
+#include <QTimer>
+#include <cmath>
 #include <QComboBox>
 #include <QColorDialog>
 #include <QFormLayout>
@@ -38,6 +42,26 @@ const ActionLabel kActionLabels[] = {
     { CaptureAction::ShowToast, QT_TR_NOOP("Show toast") },
 };
 
+// Small gradient stand-in for a capture, with a bar and a button so auto
+// colors and From screenshot have something to pick up
+QImage previewSample()
+{
+    QImage sample(96, 64, QImage::Format_ARGB32_Premultiplied);
+    QLinearGradient gradient(0, 0, 96, 64);
+    gradient.setColorAt(0, QColor(70, 130, 220));
+    gradient.setColorAt(1, QColor(240, 170, 60));
+    QPainter p(&sample);
+    p.fillRect(sample.rect(), gradient);
+    p.fillRect(QRect(0, 0, 96, 10), QColor(245, 246, 250));
+    p.fillRect(QRect(60, 46, 28, 10), QColor(236, 72, 96));
+    return sample;
+}
+
+#if defined(Q_OS_MACOS)
+// Preview frame rate; the loop takes as long as the export would
+constexpr int kAnimPreviewIntervalMs = 50;
+#endif
+
 } // namespace
 
 WorkflowsConf::WorkflowsConf(QWidget* parent)
@@ -49,6 +73,9 @@ WorkflowsConf::WorkflowsConf(QWidget* parent)
     addWorkflow(QStringLiteral("TAKE_SCREENSHOT"), tr("Capture screen"));
     addWorkflow(QStringLiteral("CAPTURE_AND_EDIT"), tr("Capture and edit"));
     addEffectsGroup();
+#if defined(Q_OS_MACOS)
+    addAnimateGroup();
+#endif
     if (screenRecordingSupported()) {
         addRecordingGroup();
     }
@@ -233,6 +260,117 @@ void WorkflowsConf::addEffectsGroup()
     static_cast<QVBoxLayout*>(layout())->addWidget(box);
 }
 
+#if defined(Q_OS_MACOS)
+void WorkflowsConf::addAnimateGroup()
+{
+    auto* box = new QGroupBox(tr("Animated background"), this);
+    box->setToolTip(tr("Used by the Animate button: the Beautify look over a "
+                       "looping animated background, saved as a video."));
+    auto* boxLayout = new QHBoxLayout(box);
+    auto* form = new QFormLayout();
+
+    m_animStyle = new QComboBox(box);
+    m_animStyle->addItem(tr("Aurora"), int(AnimStyle::Aurora));
+    m_animStyle->addItem(tr("Gradient shift"), int(AnimStyle::GradientShift));
+    m_animStyle->addItem(tr("Blobs"), int(AnimStyle::Blobs));
+    m_animStyle->addItem(tr("Twinkle"), int(AnimStyle::Twinkle));
+    form->addRow(tr("Style"), m_animStyle);
+
+    m_animDuration = new QSpinBox(box);
+    m_animDuration->setRange(3, 10);
+    m_animDuration->setSuffix(tr(" s"));
+    form->addRow(tr("Loop length"), m_animDuration);
+
+    m_animFps = new QSpinBox(box);
+    m_animFps->setRange(15, 60);
+    m_animFps->setSuffix(tr(" fps"));
+    m_animFps->setToolTip(tr("Video frame rate. GIFs use at most 15 fps."));
+    form->addRow(tr("Frame rate"), m_animFps);
+
+    m_animFormat = new QComboBox(box);
+    m_animFormat->addItem(tr("MP4"), 0);
+    m_animFormat->addItem(tr("GIF"), 1);
+    m_animFormat->addItem(tr("MP4 and GIF"), 2);
+    form->addRow(tr("Format"), m_animFormat);
+    boxLayout->addLayout(form);
+
+    m_animPreview = new QLabel(box);
+    m_animPreview->setAlignment(Qt::AlignCenter);
+    m_animPreview->setMinimumSize(180, 120);
+    // The timer only runs while the preview can be seen
+    m_animPreview->installEventFilter(this);
+    boxLayout->addWidget(m_animPreview, 1);
+
+    m_animTimer = new QTimer(this);
+    m_animTimer->setInterval(kAnimPreviewIntervalMs);
+    connect(m_animTimer, &QTimer::timeout, this, &WorkflowsConf::tickAnimPreview);
+
+    for (QComboBox* combo : { m_animStyle, m_animFormat }) {
+        connect(combo,
+                QOverload<int>::of(&QComboBox::currentIndexChanged),
+                this,
+                &WorkflowsConf::onAnimChanged);
+    }
+    for (QSpinBox* spin : { m_animDuration, m_animFps }) {
+        connect(spin,
+                QOverload<int>::of(&QSpinBox::valueChanged),
+                this,
+                &WorkflowsConf::onAnimChanged);
+    }
+    static_cast<QVBoxLayout*>(layout())->addWidget(box);
+}
+
+void WorkflowsConf::onAnimChanged()
+{
+    if (m_updating) {
+        return;
+    }
+    ConfigHandler config;
+    config.setAnimStyle(m_animStyle->currentData().toInt());
+    config.setAnimDurationSec(m_animDuration->value());
+    config.setAnimFps(m_animFps->value());
+    config.setAnimFormat(m_animFormat->currentData().toInt());
+    rebuildAnimPreview();
+}
+
+void WorkflowsConf::rebuildAnimPreview()
+{
+    if (m_animStyle == nullptr) {
+        return;
+    }
+    m_animFrames = std::make_unique<AnimatedFrames>(
+      previewSample(),
+      previewSettings(),
+      animatedbg::styleFrom(m_animStyle->currentData().toInt()));
+    tickAnimPreview();
+}
+
+void WorkflowsConf::tickAnimPreview()
+{
+    if (!m_animFrames) {
+        return;
+    }
+    const QImage frame = m_animFrames->frame(m_animPhase);
+    m_animPreview->setPixmap(QPixmap::fromImage(frame).scaled(
+      m_animPreview->minimumSize(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    const double step =
+      kAnimPreviewIntervalMs / (1000.0 * std::max(1, m_animDuration->value()));
+    m_animPhase = std::fmod(m_animPhase + step, 1.0);
+}
+
+bool WorkflowsConf::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == m_animPreview && m_animTimer != nullptr) {
+        if (event->type() == QEvent::Show) {
+            m_animTimer->start();
+        } else if (event->type() == QEvent::Hide) {
+            m_animTimer->stop();
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+#endif
+
 void WorkflowsConf::addRecordingGroup()
 {
     auto* box = new QGroupBox(tr("Screen recording"), this);
@@ -344,18 +482,20 @@ void WorkflowsConf::updatePreview()
     m_glassPx->setEnabled(m_glass->isChecked());
     m_grain->setEnabled(mode != int(BackgroundMode::None));
 
-    // Small gradient stand-in for a capture, with a bar and a button so
-    // auto colors and From screenshot have something to pick up
-    QImage sample(96, 64, QImage::Format_ARGB32_Premultiplied);
-    QLinearGradient gradient(0, 0, 96, 64);
-    gradient.setColorAt(0, QColor(70, 130, 220));
-    gradient.setColorAt(1, QColor(240, 170, 60));
-    {
-        QPainter p(&sample);
-        p.fillRect(sample.rect(), gradient);
-        p.fillRect(QRect(0, 0, 96, 10), QColor(245, 246, 250));
-        p.fillRect(QRect(60, 46, 28, 10), QColor(236, 72, 96));
-    }
+    // Large paddings would overflow the box, so fit the result into it
+    m_preview->setPixmap(
+      QPixmap::fromImage(
+        imageeffects::applyEffects(previewSample(), previewSettings()))
+        .scaled(m_preview->minimumSize(),
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation));
+#if defined(Q_OS_MACOS)
+    rebuildAnimPreview();
+#endif
+}
+
+EffectSettings WorkflowsConf::previewSettings() const
+{
     EffectSettings settings;
     settings.borderPx = m_borderPx->value();
     settings.borderColor = m_borderColorValue;
@@ -372,12 +512,7 @@ void WorkflowsConf::updatePreview()
     settings.glass = m_glass->isChecked();
     settings.glassPx = m_glassPx->value();
     settings.grain = m_grain->value();
-    // Large paddings would overflow the box, so fit the result into it
-    m_preview->setPixmap(
-      QPixmap::fromImage(imageeffects::applyEffects(sample, settings))
-        .scaled(m_preview->minimumSize(),
-                Qt::KeepAspectRatio,
-                Qt::SmoothTransformation));
+    return settings;
 }
 
 void WorkflowsConf::onToggled(const QString& hotkey)
@@ -436,6 +571,14 @@ void WorkflowsConf::updateComponents()
           tr("%1 shortcut: %2")
             .arg(name, sequence.isEmpty() ? tr("not set") : sequence));
     }
+#if defined(Q_OS_MACOS)
+    m_animStyle->setCurrentIndex(
+      std::max(0, m_animStyle->findData(config.animStyle())));
+    m_animDuration->setValue(config.animDurationSec());
+    m_animFps->setValue(config.animFps());
+    m_animFormat->setCurrentIndex(
+      std::max(0, m_animFormat->findData(config.animFormat())));
+#endif
     if (m_gifFps != nullptr) {
         m_gifFps->setValue(config.gifFps());
         m_gifMaxWidth->setValue(config.gifMaxWidth());
@@ -444,3 +587,6 @@ void WorkflowsConf::updateComponents()
     m_updating = false;
     updatePreview();
 }
+
+// Out of line: AnimatedFrames is only forward-declared in the header
+WorkflowsConf::~WorkflowsConf() = default;

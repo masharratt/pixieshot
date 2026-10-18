@@ -75,9 +75,15 @@ public:
     // id() of this command, so a second Beautify press can recognise it
     static constexpr int kId = 0x6265; // "be"
 
+    // shotSource: where the un-beautified pixels sit in the beautified
+    // image (device pixels, relative to the image)
     BeautifyEditCommand(CaptureWidget* captureWidget,
                         const EditCanvasState& before,
-                        const EditCanvasState& after);
+                        const EditCanvasState& after,
+                        const QRect& shotSource);
+
+    const EditCanvasState& before() const { return m_before; }
+    const QRect& shotSource() const { return m_shotSource; }
 
     int id() const override { return kId; }
     void undo() override;
@@ -87,4 +93,5 @@ private:
     CaptureWidget* m_captureWidget;
     EditCanvasState m_before;
     EditCanvasState m_after;
+    QRect m_shotSource;
 };

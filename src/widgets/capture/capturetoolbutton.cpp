@@ -157,6 +157,7 @@ static std::map<CaptureTool::Type, int> buttonTypeOrder
       { CaptureTool::TYPE_BEAUTIFY, 24 },
 #if defined(Q_OS_MACOS)
       { CaptureTool::TYPE_OCR, 25 },
+      { CaptureTool::TYPE_ANIMATE, 26 },
 #endif
 };
 
@@ -188,6 +189,6 @@ QList<CaptureTool::Type> CaptureToolButton::iterableButtonTypes = {
     CaptureTool::TYPE_SIZEDECREASE,  CaptureTool::TYPE_ACCEPT,
     CaptureTool::TYPE_BEAUTIFY,
 #if defined(Q_OS_MACOS)
-    CaptureTool::TYPE_OCR,
+    CaptureTool::TYPE_OCR,           CaptureTool::TYPE_ANIMATE,
 #endif
 };

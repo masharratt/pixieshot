@@ -37,6 +37,11 @@ target_sources(flameshot PRIVATE
     qguiappcurrentscreen.cpp
 )
 
+if (APPLE)
+    # Animate export (the encoder lives in platform/macos)
+    target_sources(flameshot PRIVATE animexportjob.h animexportjob.cpp)
+endif ()
+
 if (UNIX AND NOT APPLE)
 target_sources(flameshot PRIVATE
     flameshotdbusadapter.h

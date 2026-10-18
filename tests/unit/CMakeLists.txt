@@ -30,6 +30,8 @@ flameshot_add_unit_test(tst_actionrunner SOURCES core/actionrunner.cpp core/acti
 flameshot_add_unit_test(tst_hotkeys SOURCES core/hotkeyutils.cpp)
 flameshot_add_unit_test(tst_imageeffects SOURCES utils/imageeffects.cpp utils/beautifylayout.cpp utils/backgroundfx.cpp utils/autocolors.cpp utils/glassframe.cpp)
 flameshot_add_unit_test(tst_beautifylayout SOURCES utils/beautifylayout.cpp utils/imageeffects.cpp utils/backgroundfx.cpp utils/autocolors.cpp utils/glassframe.cpp)
+flameshot_add_unit_test(tst_animatedbg SOURCES utils/animatedbg.cpp utils/animatedframe.cpp utils/beautifylayout.cpp utils/imageeffects.cpp utils/backgroundfx.cpp utils/autocolors.cpp utils/glassframe.cpp)
+flameshot_add_unit_test(tst_gifquant SOURCES utils/gifquant.cpp)
 flameshot_add_unit_test(tst_recordingstate SOURCES core/recordingstate.cpp)
 flameshot_add_unit_test(tst_recordingedit SOURCES core/recordingedit.cpp)
 flameshot_add_unit_test(tst_gifplan SOURCES core/gifplan.cpp)
@@ -95,5 +97,30 @@ if(APPLE)
     $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
   add_test(NAME tst_videoedit COMMAND tst_videoedit)
   set_tests_properties(tst_videoedit PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+  # Animate export (MP4 + GIF) end to end. Objective-C++, added by hand.
+  add_executable(tst_animexport tst_animexport.mm
+    "${CMAKE_SOURCE_DIR}/src/platform/macos/animexport.mm"
+    "${CMAKE_SOURCE_DIR}/src/platform/macos/videoedit.mm"
+    "${CMAKE_SOURCE_DIR}/src/platform/macos/videothumbnail.mm"
+    "${CMAKE_SOURCE_DIR}/src/platform/macos/cgimage.mm"
+    "${CMAKE_SOURCE_DIR}/src/core/recordingedit.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/animatedbg.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/animatedframe.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/gifquant.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/beautifylayout.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/imageeffects.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/backgroundfx.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/autocolors.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/glassframe.cpp")
+  target_include_directories(tst_animexport PRIVATE "${CMAKE_SOURCE_DIR}/src")
+  target_link_libraries(tst_animexport PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Test
+    "-framework AVFoundation" "-framework CoreMedia" "-framework CoreVideo"
+    "-framework CoreImage" "-framework CoreGraphics" "-framework ImageIO"
+    "-framework UniformTypeIdentifiers" "-framework Foundation")
+  target_compile_options(tst_animexport PRIVATE
+    $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
+  add_test(NAME tst_animexport COMMAND tst_animexport)
+  set_tests_properties(tst_animexport PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
 flameshot_add_unit_test(tst_appidentity SOURCES)

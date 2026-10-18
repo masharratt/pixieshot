@@ -55,6 +55,7 @@ public:
         TYPE_RULER = 25,
         TYPE_BEAUTIFY = 26,
         TYPE_OCR = 27,
+        TYPE_ANIMATE = 28,
     };
     Q_ENUM(Type);
 
@@ -87,7 +88,10 @@ public:
         REQ_COMMIT_CURRENT_TOOL,
         // Beautify button: the widget decides whether to finish the capture
         // (overlay) or beautify the image in place (windowed editor).
-        REQ_BEAUTIFY
+        REQ_BEAUTIFY,
+        // Animate button: finish and export (overlay) or export the current
+        // image and stay open (windowed editor)
+        REQ_ANIMATE
     };
 
     explicit CaptureTool(QObject* parent = nullptr)

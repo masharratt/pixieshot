@@ -3,11 +3,17 @@
 #pragma once
 
 #include "core/actionlist.h"
+#include "utils/imageeffects.h"
 
 #include <QMap>
 #include <QWidget>
 
 #include <QColor>
+
+#include <memory>
+
+class AnimatedFrames;
+class QTimer;
 
 class QCheckBox;
 class QComboBox;
@@ -22,6 +28,7 @@ class WorkflowsConf : public QWidget
     Q_OBJECT
 public:
     explicit WorkflowsConf(QWidget* parent = nullptr);
+    ~WorkflowsConf() override;
 
 public slots:
     void updateComponents();
@@ -34,6 +41,19 @@ private:
     void onRecordingChanged();
     void onEffectChanged();
     void updatePreview();
+    // The Beautify settings as currently shown (not yet saved values)
+    EffectSettings previewSettings() const;
+#if defined(Q_OS_MACOS)
+    void addAnimateGroup();
+    void onAnimChanged();
+    void rebuildAnimPreview();
+    void tickAnimPreview();
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
+private:
+#endif
 
     struct Row
     {
@@ -65,6 +85,16 @@ private:
     QSpinBox* m_gifFps = nullptr;
     QSpinBox* m_gifMaxWidth = nullptr;
     QCheckBox* m_recordShowClicks = nullptr;
+#if defined(Q_OS_MACOS)
+    QComboBox* m_animStyle = nullptr;
+    QSpinBox* m_animDuration = nullptr;
+    QSpinBox* m_animFps = nullptr;
+    QComboBox* m_animFormat = nullptr;
+    QLabel* m_animPreview = nullptr;
+    QTimer* m_animTimer = nullptr;
+    std::unique_ptr<AnimatedFrames> m_animFrames;
+    double m_animPhase = 0.0;
+#endif
     QColor m_borderColorValue;
     QColor m_backgroundColor1Value;
     QColor m_backgroundColor2Value;

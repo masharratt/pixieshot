@@ -5,6 +5,7 @@ target_sources(flameshot PRIVATE
     screenrecorder.h
     scrollcapture.h
     gifencoder.h
+    animexport.h
     videothumbnail.h
     videoedit.h
     videopreview.h
@@ -21,7 +22,9 @@ if (APPLE)
         macos/sckdisplay.mm
         macos/cgimage.h
         macos/cgimage.mm
+        macos/gifwriter.h
         macos/gifencoder.mm
+        macos/animexport.mm
         macos/videothumbnail.mm
         macos/videoedit.mm
         macos/videopreview.mm

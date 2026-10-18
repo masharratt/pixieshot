@@ -46,6 +46,9 @@ constexpr const char* visibleInDockProperty = "_visibleInDock";
 #include "config/configresolver.h"
 #include "config/configwindow.h"
 #include "core/actionrunner.h"
+#if defined(Q_OS_MACOS)
+#include "core/animexportjob.h"
+#endif
 #include "core/capturedelay.h"
 #include "core/capturefirstrequest.h"
 #include "core/hotkeyutils.h"
@@ -935,6 +938,8 @@ void Flameshot::exportCapture(const QPixmap& rawCapture,
         runWorkflow(capture, selection, req, beautify, needsAlpha);
     }
 
+    // Where an animated export goes: next to the saved PNG when known
+    QString animateNextTo = req.path();
     if ((tasks & CR::SAVE) && !hasWorkflow) {
         if (req.path().isEmpty()) {
             saveToFilesystemGUI(capture, pngOverrideForAlpha(needsAlpha));
@@ -946,6 +951,7 @@ void Flameshot::exportCapture(const QPixmap& rawCapture,
                                  &savedPath,
                                  req.overwriteExisting(),
                                  pngOverrideForAlpha(needsAlpha))) {
+                animateNextTo = savedPath;
                 emit captureSaved(
                   savedPath, capture, selection, req.capturedGlobalRect());
                 // Only the editor window sets an edit image
@@ -995,6 +1001,14 @@ void Flameshot::exportCapture(const QPixmap& rawCapture,
                   widget->showPostUploadDialog();
               }
           });
+    }
+#endif
+
+#if defined(Q_OS_MACOS)
+    if (tasks & CR::ANIMATE) {
+        // From the raw capture: the export applies the effects itself, over
+        // the animated background. Named after the saved PNG when there is one.
+        AnimExportJob::start(rawCapture.toImage(), animateNextTo);
     }
 #endif
 

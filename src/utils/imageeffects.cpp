@@ -150,8 +150,10 @@ bool glassActive(const EffectSettings& settings, qreal dpr)
     return settings.glass && scaledPx(settings.glassPx, dpr) > 0;
 }
 
-// The shadow of src alone, on the canvas shadowStep gives (src's own
-// pixels are not drawn)
+} // namespace
+
+namespace imageeffects {
+
 QImage shadowLayer(const QImage& src,
                    int blur,
                    const QPoint& offset,
@@ -202,6 +204,30 @@ QImage shadowLayer(const QImage& src,
     return out;
 }
 
+QImage glassShadow(QSize bezelSize,
+                   qreal outerRadius,
+                   const EffectSettings& settings,
+                   qreal dpr)
+{
+    QImage plate(bezelSize, QImage::Format_ARGB32_Premultiplied);
+    plate.fill(Qt::transparent);
+    {
+        QPainter p(&plate);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setPen(Qt::NoPen);
+        p.setBrush(Qt::black);
+        p.drawRoundedRect(
+          QRectF(QPointF(0, 0), QSizeF(bezelSize)), outerRadius, outerRadius);
+    }
+    plate.setDevicePixelRatio(dpr);
+    return shadowLayer(
+      plate, settings.shadowBlur, settings.shadowOffset, settings.shadowColor);
+}
+
+} // namespace imageeffects
+
+namespace {
+
 // src on a background canvas of its padding/aspect step. `shot` feeds the
 // backgrounds made from the shot's pixels.
 QImage composeOnBackground(const QImage& src,
@@ -242,21 +268,10 @@ QImage composeWithGlass(const QImage& shotImage,
     QImage shadowImage;
     if (settings.shadow) {
         // The bezel's shape casts the shadow
-        QImage plate(glass.canvas, QImage::Format_ARGB32_Premultiplied);
-        plate.fill(Qt::transparent);
-        {
-            QPainter p(&plate);
-            p.setRenderHint(QPainter::Antialiasing);
-            p.setPen(Qt::NoPen);
-            p.setBrush(Qt::black);
-            p.drawRoundedRect(
-              QRectF(QPointF(0, 0), QSizeF(glass.canvas)), outerRadius, outerRadius);
-        }
-        plate.setDevicePixelRatio(dpr);
         shadow = shadowStep(
           glass.canvas, settings.shadowBlur, settings.shadowOffset, dpr);
-        shadowImage = shadowLayer(
-          plate, settings.shadowBlur, settings.shadowOffset, settings.shadowColor);
+        shadowImage =
+          imageeffects::glassShadow(glass.canvas, outerRadius, settings, dpr);
     }
     const Step bg =
       backgroundStep(shadow.canvas, settings.paddingPx, settings.aspect, dpr);
@@ -296,7 +311,7 @@ QImage dropShadow(const QImage& src,
     const qreal dpr = src.devicePixelRatio();
     const beautifygeometry::Step step =
       beautifygeometry::shadowStep(src.size(), blur, offset, dpr);
-    QImage out = shadowLayer(src, blur, offset, color);
+    QImage out = imageeffects::shadowLayer(src, blur, offset, color);
     {
         QPainter p(&out);
         p.drawImage(step.origin, physical(src));

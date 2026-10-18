@@ -34,6 +34,9 @@ target_sources(
           backgroundfx.cpp
           autocolors.cpp
           glassframe.cpp
+          animatedbg.cpp
+          animatedframe.cpp
+          gifquant.cpp
           scrollstitch.cpp
           loginitem.cpp
           outputpath.cpp

@@ -22,3 +22,16 @@ bool shouldBeautify(bool requestedByTask,
 {
     return requestedByTask || (beautifyAlways && !editingExistingImage);
 }
+
+AnimateBase animateBaseFor(bool beautifyActive,
+                           bool beautifyIsNewest,
+                           bool canvasChangedSince)
+{
+    if (!beautifyActive) {
+        return AnimateBase::CurrentImage;
+    }
+    if (beautifyIsNewest || canvasChangedSince) {
+        return AnimateBase::BeforeBeautify;
+    }
+    return AnimateBase::BeautifiedShot;
+}

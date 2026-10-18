@@ -85,7 +85,7 @@ CaptureToast::CaptureToast(const QString& path,
         return b;
     };
     if (recording) {
-        addButton(tr("Edit"), [this]() {
+        m_editButton = addButton(tr("Edit"), [this]() {
             // The editor takes over the source and its cleanup
             const QString source = m_editSource;
             m_editSource.clear();
@@ -169,6 +169,11 @@ bool CaptureToast::showForRecording(const QString& path,
       path, QPixmap::fromImage(frame), QRect(), QRect(), seconds, true);
     toast->m_kind = kind;
     toast->m_editSource = editSource;
+    if (editSource.isEmpty() && toast->m_editButton != nullptr) {
+        // Nothing to edit from (an animated-background GIF)
+        toast->m_editButton->hide();
+        toast->setFixedSize(toast->sizeHint());
+    }
     s_toasts.prepend(toast);
     restack();
     toast->show();

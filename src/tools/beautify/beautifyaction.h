@@ -33,3 +33,25 @@ BeautifyAction beautifyActionFor(bool inEditor,
 bool shouldBeautify(bool requestedByTask,
                     bool beautifyAlways,
                     bool editingExistingImage);
+
+// Which image the editor's Animate button starts from. Animate applies the
+// Beautify effects itself, so it must never start from beautified pixels.
+enum class AnimateBase
+{
+    // No in-place Beautify is active: the image (with its annotations) is
+    // the plain base. A project re-opened as beautified keeps its base
+    // un-beautified, so it is this case too.
+    CurrentImage,
+    // The image and annotations as they were just before Beautify
+    BeforeBeautify,
+    // The shot area of the current, beautified image: the un-beautified
+    // pixels plus annotations drawn on them after Beautify
+    BeautifiedShot,
+};
+
+// beautifyActive: an in-place Beautify is among the applied undo steps.
+// beautifyIsNewest: it is the newest step. canvasChangedSince: the canvas
+// was expanded after it, so its shot area is no longer where it was.
+AnimateBase animateBaseFor(bool beautifyActive,
+                           bool beautifyIsNewest,
+                           bool canvasChangedSince);

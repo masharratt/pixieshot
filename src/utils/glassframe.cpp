@@ -131,18 +131,39 @@ void drawBezel(QImage& canvas,
     // cheap, blurred harder than anything else on the canvas
     const int factor = std::clamp(thickness / 4, 1, 8);
     const int margin = thickness + 2 * factor;
-    const QRect region = bezel.adjusted(-margin, -margin, margin, margin)
-                           .intersected(background.rect());
-    QImage blurred = background.copy(region)
+    // `background` covers the canvas at its own resolution (the animated
+    // export passes its smaller work image); bs* map canvas to background
+    const double bsx = double(background.width()) / canvas.width();
+    const double bsy = double(background.height()) / canvas.height();
+    const QRect wanted = bezel.adjusted(-margin, -margin, margin, margin)
+                           .intersected(canvas.rect());
+    const QRect source =
+      QRect(QPoint(int(std::floor(wanted.left() * bsx)),
+                   int(std::floor(wanted.top() * bsy))),
+            QPoint(int(std::ceil((wanted.right() + 1) * bsx)) - 1,
+                   int(std::ceil((wanted.bottom() + 1) * bsy)) - 1))
+        .intersected(background.rect());
+    if (source.isEmpty()) {
+        return;
+    }
+    // The canvas area `source` covers (the same rect at full resolution)
+    const QRectF region(source.x() / bsx,
+                        source.y() / bsy,
+                        source.width() / bsx,
+                        source.height() / bsy);
+    QImage blurred = background.copy(source)
                        .convertToFormat(QImage::Format_ARGB32_Premultiplied)
-                       .scaled(std::max(1, region.width() / factor),
-                               std::max(1, region.height() / factor),
+                       .scaled(std::max(1, int(region.width()) / factor),
+                               std::max(1, int(region.height()) / factor),
                                Qt::IgnoreAspectRatio,
                                Qt::SmoothTransformation);
     backgroundfx::boxBlur(
       blurred, std::max(1, int(std::lround(kBlur * thickness / factor))), kBlurPasses);
-    const float sx = float(blurred.width()) / region.width();
-    const float sy = float(blurred.height()) / region.height();
+    // All float, so at full resolution the arithmetic is unchanged
+    const float sx = float(blurred.width()) / float(region.width());
+    const float sy = float(blurred.height()) / float(region.height());
+    const float regionX = float(region.x());
+    const float regionY = float(region.y());
 
     const Shape outer = shapeOf(bezel, outerRadius);
     const Shape inner = shapeOf(shot, innerRadius);
@@ -192,8 +213,8 @@ void drawBezel(QImage& canvas,
             const float ring = std::max(0.f, dIn);
             const float u = (dOut - ring) / std::max(1.f, dOut + ring);
             const float shift = strength * u * std::abs(u);
-            const float bxp = (px + nx * shift - region.x()) * sx - 0.5f;
-            const float byp = (py + ny * shift - region.y()) * sy - 0.5f;
+            const float bxp = (px + nx * shift - regionX) * sx - 0.5f;
+            const float byp = (py + ny * shift - regionY) * sy - 0.5f;
             Premul c = mix(sample(blurred, bxp, byp), white, kTint);
 
             // Specular rim on both edges, bright where the edge faces the light

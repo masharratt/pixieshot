@@ -1,6 +1,6 @@
 # State Machines
 
-**Last Updated:** 2026-10-16 (recording editor lifecycle; GIF recordings keep their source MP4 for editing)
+**Last Updated:** 2026-10-18 (animated background export job)
 
 ## 1. Capture Overlay
 
@@ -225,4 +225,33 @@ stateDiagram-v2
   Done --> Idle
   Failed --> Idle
   Cancelled --> Idle
+```
+
+## 6. Animated Background Export
+
+**Source:** `src/core/animexportjob.h` (`AnimExportJob::State`), driven by `src/core/animexportjob.cpp` (`run`, `finish`); encoding in `src/platform/macos/animexport.mm`. Started by the Animate button.
+
+### States
+| State | Meaning |
+|-------|---------|
+| Rendering | Output names reserved; each frame is rendered and handed to the encoder (MP4, then GIF) on a worker thread; a progress pill shows the percentage. |
+| Saved | Every requested file written; each gets a history entry and a toast, and the first file's URL is copied. |
+| Failed | An encoder or file error; partial and placeholder files are removed and the error is logged. |
+
+### Transitions
+| From | To | Trigger | Guard |
+|------|----|---------|-------|
+| Rendering | Saved | Worker reports success | all requested files finished |
+| Rendering | Failed | Worker reports an error | none |
+
+Rendering and encoding run together frame by frame, so there is no separate encoding state. The job cannot be cancelled; it deletes itself after Saved or Failed.
+
+### Diagram
+```mermaid
+stateDiagram-v2
+  [*] --> Rendering
+  Rendering --> Saved
+  Rendering --> Failed
+  Saved --> [*]
+  Failed --> [*]
 ```

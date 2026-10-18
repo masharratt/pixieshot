@@ -6,6 +6,7 @@
 
 #include "platform/gifencoder.h"
 #include "core/gifplan.h"
+#include "platform/macos/gifwriter.h"
 
 #include <QCoreApplication>
 #include <QMetaObject>
@@ -55,7 +56,6 @@ bool encodeBlocking(const GifEncodeParams& p, QString* error)
 {
     @autoreleasepool {
         NSURL* input = [NSURL fileURLWithPath:toNSString(p.inputMp4)];
-        NSURL* output = [NSURL fileURLWithPath:toNSString(p.outputGif)];
         AVURLAsset* asset = [AVURLAsset URLAssetWithURL:input options:nil];
 
         // The sync accessors are deprecated but are the only blocking route
@@ -97,30 +97,11 @@ bool encodeBlocking(const GifEncodeParams& p, QString* error)
         generator.maximumSize =
           CGSizeMake(plan.size.width(), plan.size.height());
 
-        CGImageDestinationRef dest = CGImageDestinationCreateWithURL(
-          (__bridge CFURLRef)output,
-          (__bridge CFStringRef)UTTypeGIF.identifier,
-          static_cast<size_t>(plan.frameTimes.size()),
-          NULL);
-        if (dest == NULL) {
+        GifWriter gif(p.outputGif, static_cast<size_t>(plan.frameTimes.size()));
+        if (!gif.isOpen()) {
             *error = QStringLiteral("Could not create the GIF file.");
             return false;
         }
-        CGImageDestinationSetProperties(
-          dest,
-          (__bridge CFDictionaryRef) @{
-              (__bridge NSString*)kCGImagePropertyGIFDictionary : @{
-                  (__bridge NSString*)kCGImagePropertyGIFLoopCount : @0
-              }
-          });
-        NSDictionary* frameProps = @{
-            (__bridge NSString*)kCGImagePropertyGIFDictionary : @{
-                (__bridge NSString*)kCGImagePropertyGIFDelayTime :
-                  @(plan.frameDelay),
-                (__bridge NSString*)kCGImagePropertyGIFUnclampedDelayTime :
-                  @(plan.frameDelay)
-            }
-        };
 
         // A frame that cannot be decoded repeats the previous one so the
         // frame count declared above still matches and timing is kept.
@@ -135,14 +116,11 @@ bool encodeBlocking(const GifEncodeParams& p, QString* error)
                     }
                 }
                 if (image == NULL) {
-                    CFRelease(dest);
                     *error = QStringLiteral("Could not decode a frame.");
-                    [[NSFileManager defaultManager] removeItemAtURL:output
-                                                              error:nil];
+                    gif.discard();
                     return false;
                 }
-                CGImageDestinationAddImage(
-                  dest, image, (__bridge CFDictionaryRef)frameProps);
+                gif.add(image, plan.frameDelay);
                 if (last != NULL) {
                     CGImageRelease(last);
                 }
@@ -152,11 +130,9 @@ bool encodeBlocking(const GifEncodeParams& p, QString* error)
         if (last != NULL) {
             CGImageRelease(last);
         }
-        const bool ok = CGImageDestinationFinalize(dest);
-        CFRelease(dest);
+        const bool ok = gif.finish();
         if (!ok) {
             *error = QStringLiteral("Could not write the GIF file.");
-            [[NSFileManager defaultManager] removeItemAtURL:output error:nil];
         }
         return ok;
     }

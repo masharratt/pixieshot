@@ -13,6 +13,7 @@
         <file>img/app/keyboard.svg</file>
         <file>img/material/black/accept.svg</file>
         <file>img/material/black/beautify.svg</file>
+        <file>img/material/black/animate.svg</file>
         <file>img/material/black/ocr.svg</file>
         <file>img/material/black/arrow-bottom-left.svg</file>
         <file>img/material/black/centeralign.svg</file>
@@ -62,6 +63,7 @@
         <file>img/material/black/shortcut.svg</file>
         <file>img/material/white/accept.svg</file>
         <file>img/material/white/beautify.svg</file>
+        <file>img/material/white/animate.svg</file>
         <file>img/material/white/ocr.svg</file>
         <file>img/material/white/arrow-bottom-left.svg</file>
         <file>img/material/white/centeralign.svg</file>

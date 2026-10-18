@@ -27,7 +27,7 @@ public:
     // "Edit recording" window on editSource (see RecordingController). The
     // toast owns a temp editSource and removes it on close unless it was
     // handed to the editor. Returns false (and owns nothing) when no toast
-    // is shown because seconds <= 0.
+    // is shown because seconds <= 0. With no editSource there is no Edit.
     static bool showForRecording(const QString& path,
                                  const QString& kind,
                                  const QString& editSource,
@@ -56,6 +56,7 @@ private:
     QRect m_globalRect; // global logical points
     QTimer m_timer;
     QWidget* m_thumb = nullptr;
+    QWidget* m_editButton = nullptr; // recordings only
     bool m_recording = false;
     QString m_kind;       // recordings: "mp4" or "gif"
     QString m_editSource; // recordings: MP4 to edit from, until handed off

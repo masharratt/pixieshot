@@ -13,6 +13,7 @@
 #include "tools/move/movetool.h"
 #include "tools/beautify/beautifytool.h"
 #if defined(Q_OS_MACOS)
+#include "tools/animate/animatetool.h"
 #include "tools/ocr/ocrtool.h"
 #endif
 #include "tools/pin/pintool.h"
@@ -55,6 +56,7 @@ CaptureTool* ToolFactory::CreateTool(CaptureTool::Type t, QObject* parent)
         if_TYPE_return_TOOL(TYPE_BEAUTIFY, BeautifyTool);
 #if defined(Q_OS_MACOS)
         if_TYPE_return_TOOL(TYPE_OCR, OcrTool);
+        if_TYPE_return_TOOL(TYPE_ANIMATE, AnimateTool);
 #endif
         default:
             return nullptr;

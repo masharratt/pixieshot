@@ -30,6 +30,8 @@ public:
         UPLOAD = 32,
         ACCEPT_ON_SELECT = 64,
         BEAUTIFY = 128,
+        // Also export the capture over an animated background (macOS)
+        ANIMATE = 256,
     };
 
     // Set on requests that only pick an area to record. No image is saved.

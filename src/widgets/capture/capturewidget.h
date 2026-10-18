@@ -200,6 +200,10 @@ private:
     EditCanvasState currentEditCanvasState();
     // Beautify button, overlay or editor (see beautifyActionFor)
     void handleBeautifyRequest();
+    // Animate button: finish and export (overlay) or export in place
+    void handleAnimateRequest();
+    // The image of an editor state with its annotations, selection-free
+    QImage flattenEditState(const EditCanvasState& state);
     void drawPickerSizeLabel(QPainter* painter);
     void selectHoveredWindow();
     void drawToolsData(bool drawSelection = true);
