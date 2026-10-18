@@ -36,6 +36,13 @@ Everything runs on your Mac. Nothing is uploaded unless you ask.
 - **Auto-balance:** evens out lopsided margins so your content sits perfectly centred
 - Use the **Beautify** button for one capture, or switch on **Beautify every capture**
 
+### 🫧 Glass and motion
+- **Liquid Glass frame:** a frosted, softly refracting bezel with a shiny rim
+- **From screenshot background:** a dreamy blurred copy of your own shot, like album art
+- **Auto colours:** a gradient picked to match each screenshot
+- **Grain** to keep gradients silky smooth
+- **Animate:** export your screenshot over a looping animated background (Aurora, Gradient shift, Blobs or Twinkle) as **MP4 or GIF**, ready to post
+
 ### 🔤 Copy text from anything
 - Select an area and click **Copy Text**: its text lands on your clipboard
 - Reads **QR codes** too
@@ -124,7 +131,7 @@ To keep macOS from asking for Screen Recording permission after every rebuild, s
 
 ## 🗺 What's next
 
-Ideas on the list: Liquid Glass frames, animated backgrounds for stills, colour palettes picked from your screenshot, spotlight and magnifier tools, and auto-hiding private info. See [readme/BACKLOG.md](readme/BACKLOG.md).
+Ideas on the list: cursor-following zoom for recordings, spotlight and magnifier tools, auto-hiding private info, 3D tilt with reflections, and shareable style packs. See [readme/BACKLOG.md](readme/BACKLOG.md).
 
 Got an idea or found a bug? [Open an issue](https://github.com/masharratt/pixieshot/issues). 💌
 
