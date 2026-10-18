@@ -353,8 +353,11 @@ QImage AnimatedFrames::frameAt(double phase, const shotmotion::Pose& pose) const
         p.drawImage(m_layout.shot.topLeft(), shotLayer);
         return out;
     }
-    const QRect area =
-      m_layout.bezel.adjusted(-kLayerMargin, -kLayerMargin, kLayerMargin, kLayerMargin);
+    // Room for the smoothing at the edges and the glass's own drop shadow
+    const int margin =
+      kLayerMargin +
+      (m_glass ? glassframe::outset(m_layout.bezel, m_layout.shot, m_dpr) : 0);
+    const QRect area = m_layout.bezel.adjusted(-margin, -margin, margin, margin);
     const QPoint origin = area.topLeft();
     QImage layer(area.size(), QImage::Format_ARGB32_Premultiplied);
     layer.fill(Qt::transparent);

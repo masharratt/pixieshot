@@ -8,15 +8,27 @@
 
 namespace {
 
-// Look of the glass
-constexpr float kTint = 0.18f;          // white mixed into the glass
-constexpr float kRefraction = 0.45f;    // max displacement, share of bezel
+// Look of the glass (macOS Liquid Glass: vibrant, lit from above, lifted)
+constexpr float kTintTop = 0.20f;       // white sheen at the top of the pane
+constexpr float kTintBottom = 0.04f;    // ... fading to this at the bottom
+constexpr float kVibrancy = 1.6f;       // saturation boost of what is behind
+constexpr float kLift = 1.06f;          // brightness lift of what is behind
+constexpr float kRefractionOuter = 0.75f; // max displacement at the outer edge
+constexpr float kRefractionInner = 0.35f; // ... and at the inner edge
 constexpr float kBlur = 0.9f;           // blur radius per pass, share of bezel
 constexpr int kBlurPasses = 3;
-constexpr float kRimAlpha = 0.65f;      // specular highlight strength
-constexpr float kRimFloor = 0.10f;      // highlight left at the bottom-right
-constexpr float kRimWidth = 2.0f;       // logical px
+constexpr float kRimAlpha = 0.75f;      // specular highlight strength
+constexpr float kRimFloor = 0.35f;      // highlight left at the bottom-right
+constexpr float kRimWidth = 2.5f;       // logical px
+constexpr float kGlowAlpha = 0.14f;     // soft light inside the outer edge
+constexpr float kGlowWidth = 0.35f;     // share of bezel
+constexpr float kInnerShadowAlpha = 0.20f; // soft shade where the shot sits
+constexpr float kInnerShadowWidth = 0.35f; // share of bezel
 constexpr float kHairlineAlpha = 0.22f; // dark 1 px line against the shot
+constexpr float kShadowAlpha = 0.24f;   // drop shadow right under the edge
+constexpr float kShadowSpread = 0.45f;  // how far it fades out, share of bezel
+constexpr float kShadowDrop = 0.3f;     // shifted down, share of the spread
+constexpr float kNoise = 2.0f;          // +- levels of static noise
 
 struct Shape
 {
@@ -105,9 +117,61 @@ QRgb pack(const Premul& c)
     return qRgba(ch(c.r), ch(c.g), ch(c.b), a);
 }
 
+// Static noise in -1..1 for a pixel, keyed to its place on the pane so it
+// moves with the pane and never shimmers between frames
+float noiseAt(int x, int y)
+{
+    quint32 h = quint32(x) * 374761393u + quint32(y) * 668265263u;
+    h = (h ^ (h >> 13)) * 1274126177u;
+    h ^= h >> 16;
+    return float(h & 0xffff) / 32767.5f - 1.f;
+}
+
+// Vibrancy: what shows through the glass gets richer and a little brighter
+void vibrance(QImage& img)
+{
+    for (int y = 0; y < img.height(); ++y) {
+        QRgb* line = reinterpret_cast<QRgb*>(img.scanLine(y));
+        for (int x = 0; x < img.width(); ++x) {
+            const Premul c = unpack(line[x]);
+            const float l = 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
+            auto boost = [&](float v) { return (l + (v - l) * kVibrancy) * kLift; };
+            line[x] = pack({ boost(c.r), boost(c.g), boost(c.b), c.a });
+        }
+    }
+}
+
+struct DropShadow
+{
+    float spread; // fades to nothing this far from the (shifted) bezel
+    float drop;   // shifted down by this much: light comes from above
+};
+
+DropShadow dropShadowOf(int thickness)
+{
+    const float spread = std::max(2.f, kShadowSpread * thickness);
+    return { spread, kShadowDrop * spread };
+}
+
+int thicknessOf(const QRect& bezel, const QRect& shot)
+{
+    return std::min(shot.left() - bezel.left(), shot.top() - bezel.top());
+}
+
 } // namespace
 
 namespace glassframe {
+
+int outset(const QRect& bezel, const QRect& shot, qreal dpr)
+{
+    Q_UNUSED(dpr);
+    const int thickness = thicknessOf(bezel, shot);
+    if (thickness <= 0) {
+        return 0;
+    }
+    const DropShadow s = dropShadowOf(thickness);
+    return int(std::ceil(s.spread + s.drop)) + 1;
+}
 
 void drawBezel(QImage& canvas,
                const QImage& background,
@@ -117,11 +181,14 @@ void drawBezel(QImage& canvas,
                qreal innerRadius,
                qreal dpr)
 {
-    const QRect area = bezel.intersected(canvas.rect());
-    const int thickness = std::min(shot.left() - bezel.left(), shot.top() - bezel.top());
-    if (area.isEmpty() || thickness <= 0) {
+    const int thickness = thicknessOf(bezel, shot);
+    if (bezel.intersected(canvas.rect()).isEmpty() || thickness <= 0) {
         return;
     }
+    // The bezel plus its drop shadow
+    const int reach = outset(bezel, shot, dpr);
+    const QRect area =
+      bezel.adjusted(-reach, -reach, reach, reach).intersected(canvas.rect());
     if (canvas.format() != QImage::Format_RGB32 &&
         canvas.format() != QImage::Format_ARGB32_Premultiplied) {
         canvas.convertTo(QImage::Format_ARGB32_Premultiplied);
@@ -159,6 +226,7 @@ void drawBezel(QImage& canvas,
                                Qt::SmoothTransformation);
     backgroundfx::boxBlur(
       blurred, std::max(1, int(std::lround(kBlur * thickness / factor))), kBlurPasses);
+    vibrance(blurred);
     // All float, so at full resolution the arithmetic is unchanged
     const float sx = float(blurred.width()) / float(region.width());
     const float sy = float(blurred.height()) / float(region.height());
@@ -167,9 +235,16 @@ void drawBezel(QImage& canvas,
 
     const Shape outer = shapeOf(bezel, outerRadius);
     const Shape inner = shapeOf(shot, innerRadius);
-    const float strength = kRefraction * thickness;
+    const DropShadow drop = dropShadowOf(thickness);
+    const Shape shadowShape{
+      outer.cx, outer.cy + drop.drop, outer.hx, outer.hy, outer.r
+    };
     const float rimWidth = std::max(1.f, kRimWidth * float(dpr));
     const float hairline = std::max(1.f, float(dpr));
+    const float glowWidth = std::max(1.f, kGlowWidth * thickness);
+    const float innerShadowWidth = std::max(1.f, kInnerShadowWidth * thickness);
+    const float top = float(bezel.top());
+    const float height = std::max(1.f, float(bezel.height()));
     // Light comes from the top left
     const float lx = -0.70710678f;
     const float ly = -0.70710678f;
@@ -199,8 +274,23 @@ void drawBezel(QImage& canvas,
             float nx = 0;
             float ny = 0;
             const float dOut = -roundedRectDistance(outer, px, py, &nx, &ny);
+            // Drop shadow under the pane: full at its (shifted) edge,
+            // fading out over the spread
+            float shadow = 0;
+            if (dOut < 0.5f) {
+                float sxn = 0;
+                float syn = 0;
+                const float d = roundedRectDistance(shadowShape, px, py, &sxn, &syn);
+                const float s = std::clamp(
+                  (drop.spread - d) / (1.3f * drop.spread), 0.f, 1.f);
+                shadow = kShadowAlpha * s * s;
+            }
             if (dOut <= -0.5f) {
-                continue; // outside the bezel
+                // outside the bezel
+                if (shadow > 0) {
+                    line[x] = pack(mix(unpack(line[x]), black, shadow));
+                }
+                continue;
             }
             float inx = 0;
             float iny = 0;
@@ -212,10 +302,17 @@ void drawBezel(QImage& canvas,
             // inner edge. Sample toward the centre line, strongest at edges.
             const float ring = std::max(0.f, dIn);
             const float u = (dOut - ring) / std::max(1.f, dOut + ring);
+            // Lensing: bends harder at the outer edge, as a thick rim does
+            const float strength =
+              (u < 0 ? kRefractionOuter : kRefractionInner) * thickness;
             const float shift = strength * u * std::abs(u);
             const float bxp = (px + nx * shift - regionX) * sx - 0.5f;
             const float byp = (py + ny * shift - regionY) * sy - 0.5f;
-            Premul c = mix(sample(blurred, bxp, byp), white, kTint);
+            // Sheen: the top of the pane catches the most light
+            const float v = std::clamp((py - top) / height, 0.f, 1.f);
+            const float sheen =
+              kTintBottom + (kTintTop - kTintBottom) * (1.f - v) * (1.f - v);
+            Premul c = mix(sample(blurred, bxp, byp), white, sheen);
 
             // Specular rim on both edges, bright where the edge faces the light
             const float facing = std::max(0.f, nx * lx + ny * ly);
@@ -225,13 +322,30 @@ void drawBezel(QImage& canvas,
               std::clamp(1.f - (dIn - hairline) / rimWidth, 0.f, 1.f) *
               (dIn >= hairline ? 1.f : 0.f);
             const float spec = kRimAlpha * light * std::max(rimOuter, rimInner);
-            c = mix(c, white, spec);
+            // Soft light just inside the outer edge, for volume
+            const float g = std::clamp(1.f - dOut / glowWidth, 0.f, 1.f);
+            const float glow = kGlowAlpha * (0.4f + 0.6f * facing) * g * g;
+            c = mix(c, white, std::max(spec, glow));
+            // The shot sits in the glass: soft shade along its edge
+            const float t = std::clamp((dIn - hairline) / innerShadowWidth, 0.f, 1.f);
+            if (dIn >= hairline && t < 1.f) {
+                c = mix(c, black, kInnerShadowAlpha * (1.f - t) * (1.f - t));
+            }
             if (dIn < hairline) {
                 c = mix(c, black, kHairlineAlpha);
             }
+            // Faint static noise kills banding in the smooth blur
+            const float n =
+              kNoise * noiseAt(x - bezel.left(), y - bezel.top()) * (c.a / 255.f);
+            c = { c.r + n, c.g + n, c.b + n, c.a };
 
             const float coverage = std::clamp(dOut + 0.5f, 0.f, 1.f);
-            line[x] = coverage >= 1.f ? pack(c) : pack(mix(unpack(line[x]), c, coverage));
+            if (coverage >= 1.f) {
+                line[x] = pack(c);
+            } else {
+                const Premul under = mix(unpack(line[x]), black, shadow);
+                line[x] = pack(mix(under, c, coverage));
+            }
         }
     }
 }

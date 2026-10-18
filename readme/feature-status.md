@@ -1,6 +1,6 @@
 # Feature Status (masharratt/flameshot fork)
 
-**Last Updated:** 2026-10-18 (Animate: annotations draw themselves in)
+**Last Updated:** 2026-10-18 (Glass frame now looks like real macOS glass)
 
 | Token | Meaning |
 |-------|---------|
@@ -24,7 +24,7 @@ Plan: `planning/PLAN_sharex_fork.md` (local, not committed).
 | Image effects | beta | Border, rounded corners and drop shadow applied by the Apply Effects action, configured with a live preview on the Workflows tab. | Per-hotkey actions | Not yet checked by hand. Effects needing transparency save as PNG only on the workflow save path. |
 | Beautify | dev | Toolbar button and "Beautify every capture" option add a background, padding and shadow. Overlay: finishes like Accept. Editor: beautifies in place, window stays open, press again or undo reverts. Set on the Workflows tab. | Image effects | Not yet checked by hand. Editor Beautify flattens annotations until undone. Save dialog path ignores the JPEG to PNG switch. |
 | Beautify size presets | dev | Option `effectAspect` grows the Beautify canvas to 1:1, 16:9, 9:16, 4:5 or 4:3 without cropping; `effectAutoBalance` first trims uneven blank margins from the capture. Set on the Workflows tab. | Beautify | Not yet checked by hand. |
-| Beautify glass frame | dev | Option `effectGlass` draws a Liquid Glass bezel (`effectGlassPx`, 4-64 px) between background and shot: refracted blurred background, white tint, specular rim, hairline. Shadow falls under the bezel. Stills and recording export match. | Beautify | Not yet checked by hand. CPU only; ~300 ms for a 4000x3000 capture with shadow. |
+| Beautify glass frame | dev | Option `effectGlass` draws a Liquid Glass bezel (`effectGlassPx`, 4-64 px) between background and shot: vivid blurred background lensed at the edges, top sheen, rim light all round, inner shade, soft drop shadow, faint noise. Stills, recording and animated export match. | Beautify | Not yet checked by hand. CPU only; ~300 ms for a 4000x3000 capture with shadow. |
 | Beautify shot backgrounds | dev | Background "From screenshot" fills the canvas with the shot blurred, saturated and darkened. `effectAutoColors` picks the gradient colors from the shot. `effectGrain` adds noise to the background. Recordings use the first exported frame. | Beautify | Not yet checked by hand. Auto colors only applies to Gradient. |
 | Animated backgrounds | dev | Animate button (macOS) saves the Beautify look over a looping Aurora, Gradient shift, Blobs or Twinkle background as MP4 and/or GIF next to the capture, with toast, history entry and file URL copied. Overlay also saves the still. Set on the Workflows tab. | Beautify, GIF / MP4 recording | Not yet checked by hand. GIF ~6 MB for 5 s. Editor Animate after Beautify nests the frame. |
 | Animate shot motion and palettes | dev | Animate can tilt the shot with a light sweep or float it (`animMotion`), adds Flow and Silk backgrounds, multi-stop palettes with Sunset Pop, Midnight and Ocean presets (`effectPalette`), and a Thumbnail preview. | Animated backgrounds, Beautify | Not yet checked by hand. Glass refraction is approximate while tilted. |

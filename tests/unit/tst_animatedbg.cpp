@@ -8,6 +8,7 @@
 #include "utils/backgroundfx.h"
 #include "utils/beautifypalette.h"
 #include "utils/beautifylayout.h"
+#include "utils/glassframe.h"
 #include "utils/imageeffects.h"
 #include "utils/shotmotion.h"
 
@@ -677,6 +678,33 @@ private slots:
             }
             QVERIFY2(moved, qPrintable(QString::number(d)));
         }
+    }
+
+    // The glass drop shadow reaches past the bezel. Moving frames draw the
+    // bezel into a layer, which must leave room for it, or the shadow is
+    // cut off the moment the shot starts to move.
+    void glassShadowIsNotClippedWhenMoving()
+    {
+        const qreal dpr = 2.0;
+        const QImage shot = sampleShot(QSize(200, 130), dpr);
+        AnimatedFrames frames(shot, beautify(true), AnimStyle::GradientShift);
+        frames.setMotion(ShotMotion::Float, 5);
+        const QImage rest = frames.frameAt(0.3, { 0.0, -1.0 });
+        const QImage moving = frames.frameAt(0.3, { 1e-3, -1.0 });
+        const QRect bezel = frames.layout().bezel;
+        const int reach = glassframe::outset(bezel, frames.layout().shot, dpr);
+        int worst = 0;
+        for (int y = bezel.bottom() + 1; y <= bezel.bottom() + reach; ++y) {
+            for (int x = bezel.center().x() - 30; x <= bezel.center().x() + 30; ++x) {
+                const QRgb a = rest.pixel(x, y);
+                const QRgb b = moving.pixel(x, y);
+                worst = std::max({ worst,
+                                   std::abs(qRed(a) - qRed(b)),
+                                   std::abs(qGreen(a) - qGreen(b)),
+                                   std::abs(qBlue(a) - qBlue(b)) });
+            }
+        }
+        QVERIFY2(worst <= 6, qPrintable(QString::number(worst)));
     }
 
     void floatDriftsSixToTenPixels()

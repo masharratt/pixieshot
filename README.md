@@ -37,7 +37,7 @@ Everything runs on your Mac. Nothing is uploaded unless you ask.
 - Use the **Beautify** button for one capture, or switch on **Beautify every capture**
 
 ### 🫧 Glass and motion
-- **Liquid Glass frame:** a frosted, softly refracting bezel with a shiny rim
+- **Liquid Glass frame:** a vivid, lit-from-above glass bezel that bends the background at its edges and floats on a soft shadow
 - **From screenshot background:** a dreamy blurred copy of your own shot, like album art
 - **Auto colours:** a gradient picked to match each screenshot
 - **Grain** to keep gradients silky smooth
