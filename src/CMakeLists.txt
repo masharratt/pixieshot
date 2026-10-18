@@ -140,6 +140,7 @@ target_sources(
         flameshot
         PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../data/graphics.qrc
+        ${CMAKE_CURRENT_SOURCE_DIR}/../data/stylepacks.qrc # built-in style packs
         ${CMAKE_CURRENT_SOURCE_DIR}/../data/flameshot.rc # windows binary icon resource file
         ${QM_FILES}
         main.cpp)

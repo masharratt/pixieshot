@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>stylepacks/midnight-glass.pixiestyle</file>
+        <file>stylepacks/sunset-pop.pixiestyle</file>
+        <file>stylepacks/album-art.pixiestyle</file>
+        <file>stylepacks/clean-paper.pixiestyle</file>
+        <file>stylepacks/ocean.pixiestyle</file>
+    </qresource>
+</RCC>

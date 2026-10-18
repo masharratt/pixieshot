@@ -617,6 +617,19 @@ QSet<QString>& ConfigHandler::recognizedGeneralOptions()
     return options;
 }
 
+bool ConfigHandler::isValidOptionValue(const QString& key,
+                                       const QVariant& value)
+{
+    const auto handler = ::recognizedGeneralOptions.value(key);
+    return handler && value.isValid() && handler->check(value);
+}
+
+QVariant ConfigHandler::optionDefault(const QString& key)
+{
+    const auto handler = ::recognizedGeneralOptions.value(key);
+    return handler ? handler->fallback() : QVariant();
+}
+
 QSet<QString>& ConfigHandler::recognizedShortcutNames()
 {
     auto keys = recognizedShortcuts.keys();

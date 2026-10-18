@@ -42,6 +42,7 @@ Everything runs on your Mac. Nothing is uploaded unless you ask.
 - **Auto colours:** a gradient picked to match each screenshot
 - **Grain** to keep gradients silky smooth
 - **Animate:** export your screenshot over a looping animated background (Aurora, Gradient shift, Blobs or Twinkle) as **MP4 or GIF**, ready to post
+- **Style packs:** save a whole look (background, glass, padding, colours, grain, Animate style) as one small `.pixiestyle` file, apply it in one click and share it. Five built in: Midnight Glass, Sunset Pop, Album Art, Clean Paper and Ocean
 
 ### 🔤 Copy text from anything
 - Select an area and click **Copy Text**: its text lands on your clipboard

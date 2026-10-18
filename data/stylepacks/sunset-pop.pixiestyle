@@ -1,0 +1,23 @@
+{
+    "format": "pixiestyle",
+    "version": 1,
+    "name": "Sunset Pop",
+    "author": "Pixieshot",
+    "settings": {
+        "animStyle": 1,
+        "effectAspect": 0,
+        "effectAutoBalance": false,
+        "effectAutoColors": false,
+        "effectBackground": 2,
+        "effectBackgroundColor1": "#ffd601",
+        "effectBackgroundColor2": "#7232f1",
+        "effectBorderColor": "#000000",
+        "effectBorderPx": 0,
+        "effectCornerRadius": 16,
+        "effectGlass": true,
+        "effectGlassPx": 18,
+        "effectGrain": 0,
+        "effectPadding": 64,
+        "effectShadow": true
+    }
+}

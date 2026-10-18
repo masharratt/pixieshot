@@ -1,0 +1,23 @@
+{
+    "format": "pixiestyle",
+    "version": 1,
+    "name": "Ocean",
+    "author": "Pixieshot",
+    "settings": {
+        "animStyle": 0,
+        "effectAspect": 0,
+        "effectAutoBalance": false,
+        "effectAutoColors": false,
+        "effectBackground": 2,
+        "effectBackgroundColor1": "#0ea5e9",
+        "effectBackgroundColor2": "#1e3a8a",
+        "effectBorderColor": "#000000",
+        "effectBorderPx": 0,
+        "effectCornerRadius": 12,
+        "effectGlass": false,
+        "effectGlassPx": 18,
+        "effectGrain": 0,
+        "effectPadding": 64,
+        "effectShadow": true
+    }
+}

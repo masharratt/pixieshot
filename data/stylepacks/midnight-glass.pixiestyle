@@ -1,0 +1,23 @@
+{
+    "format": "pixiestyle",
+    "version": 1,
+    "name": "Midnight Glass",
+    "author": "Pixieshot",
+    "settings": {
+        "animStyle": 0,
+        "effectAspect": 0,
+        "effectAutoBalance": false,
+        "effectAutoColors": false,
+        "effectBackground": 2,
+        "effectBackgroundColor1": "#1e1b4b",
+        "effectBackgroundColor2": "#7c3aed",
+        "effectBorderColor": "#000000",
+        "effectBorderPx": 0,
+        "effectCornerRadius": 14,
+        "effectGlass": true,
+        "effectGlassPx": 18,
+        "effectGrain": 0,
+        "effectPadding": 72,
+        "effectShadow": true
+    }
+}

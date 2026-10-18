@@ -1,0 +1,23 @@
+{
+    "format": "pixiestyle",
+    "version": 1,
+    "name": "Clean Paper",
+    "author": "Pixieshot",
+    "settings": {
+        "animStyle": 3,
+        "effectAspect": 0,
+        "effectAutoBalance": false,
+        "effectAutoColors": false,
+        "effectBackground": 1,
+        "effectBackgroundColor1": "#f8fafd",
+        "effectBackgroundColor2": "#e2e8f0",
+        "effectBorderColor": "#000000",
+        "effectBorderPx": 0,
+        "effectCornerRadius": 10,
+        "effectGlass": false,
+        "effectGlassPx": 18,
+        "effectGrain": 0,
+        "effectPadding": 48,
+        "effectShadow": true
+    }
+}
