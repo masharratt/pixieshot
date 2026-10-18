@@ -64,6 +64,7 @@ void AnimExportJob::run(const QImage& shot, const QString& nextTo)
     params.shot = shot;
     params.effects = config.effectSettings();
     params.style = animatedbg::styleFrom(config.animStyle());
+    params.motion = shotmotion::motionFrom(config.animMotion());
     params.durationSec = config.animDurationSec();
     params.fps = config.animFps();
     const int format = config.animFormat();

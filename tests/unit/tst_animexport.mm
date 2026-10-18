@@ -8,8 +8,11 @@
 #include "platform/videoedit.h"
 #include "utils/animatedframe.h"
 #include "utils/beautifylayout.h"
+#include "utils/beautifypalette.h"
 
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QImageReader>
 #include <QPainter>
 #include <QTemporaryDir>
@@ -128,6 +131,93 @@ private Q_SLOTS:
                  beautifyLayout(
                    p.shot.size(), AnimatedFrames::animatedSettings(p.effects), 1.0)
                    .canvas);
+    }
+
+    void gifWithMotionAndPaletteLoops()
+    {
+        AnimExportParams p;
+        p.shot = sampleShot();
+        p.effects = settings();
+        p.effects.palette = beautifypalette::presets().at(0).stops;
+        p.style = AnimStyle::Flow;
+        p.motion = ShotMotion::Tilt;
+        p.durationSec = 3;
+        p.fps = 15;
+        p.gifPath = m_dir.filePath(QStringLiteral("tilt.gif"));
+        AnimExportResult result;
+        QString error;
+        QVERIFY2(exportAnimationBlocking(p, {}, &result, &error), qPrintable(error));
+        double seconds = 0;
+        QCOMPARE(gifFrames(p.gifPath, &seconds), 45);
+        // The shot moves, so frames differ inside its rect, and the first
+        // frame (at rest) is not the frame at mid hold
+        QImageReader reader(p.gifPath);
+        const QImage first = reader.read();
+        QImage middle;
+        for (int i = 1; i <= 22; ++i) {
+            middle = reader.read();
+        }
+        QVERIFY(!middle.isNull());
+        const QRect shot = AnimatedFrames(p.shot, p.effects, p.style).layout().shot;
+        QVERIFY(first.copy(shot) != middle.copy(shot));
+    }
+
+    // Opt-in: writes a 5 s Tilt + Sunset Pop + Flow loop as MP4 and GIF
+    void saveSampleLoop()
+    {
+        const QString dir = qEnvironmentVariable("PIXIE_ANIM_SAMPLES");
+        if (dir.isEmpty()) {
+            QSKIP("Set PIXIE_ANIM_SAMPLES to a folder to save a sample loop");
+        }
+        QDir().mkpath(dir);
+        AnimExportParams p;
+        QImage shot(QSize(900, 560), QImage::Format_ARGB32_Premultiplied);
+        shot.fill(QColor(245, 246, 250));
+        {
+            QPainter painter(&shot);
+            painter.fillRect(QRect(0, 0, 900, 36), QColor(228, 230, 236));
+            for (int i = 0; i < 8; ++i) {
+                painter.fillRect(QRect(40, 70 + 34 * i, 700 - (i * 97) % 260, 12),
+                                 QColor(90, 96, 110));
+            }
+            painter.fillRect(QRect(40, 360, 820, 160), QColor(70, 130, 220));
+        }
+        shot.setDevicePixelRatio(2.0);
+        p.shot = shot;
+        p.effects = settings();
+        p.effects.cornerRadius = 12;
+        p.effects.palette = beautifypalette::presets().at(0).stops;
+        p.style = AnimStyle::Flow;
+        p.motion = ShotMotion::Tilt;
+        p.durationSec = 5;
+        p.fps = 30;
+        p.mp4Path = dir + QStringLiteral("/tilt-sunset-flow.mp4");
+        p.gifPath = dir + QStringLiteral("/tilt-sunset-flow.gif");
+        AnimExportResult result;
+        QString error;
+        if (!exportAnimationBlocking(p, {}, &result, &error)) {
+            if (result.encoderUnavailable) {
+                p.mp4Path.clear();
+                QVERIFY2(exportAnimationBlocking(p, {}, &result, &error),
+                         qPrintable(error));
+                QSKIP("No H.264 encoder: only the GIF was written");
+            }
+            QFAIL(qPrintable(error));
+        }
+        // Silk as a GIF too: its fine strands must stay smooth in 256 colours
+        AnimExportParams silk = p;
+        silk.style = AnimStyle::Silk;
+        silk.mp4Path.clear();
+        silk.gifPath = dir + QStringLiteral("/tilt-sunset-silk.gif");
+        QVERIFY2(exportAnimationBlocking(silk, {}, nullptr, &error), qPrintable(error));
+        qInfo("silk gif %lld bytes", QFileInfo(silk.gifPath).size());
+        qInfo("mp4 %lld bytes %dx%d, gif %lld bytes %dx%d",
+              QFileInfo(p.mp4Path).size(),
+              result.mp4Size.width(),
+              result.mp4Size.height(),
+              QFileInfo(p.gifPath).size(),
+              result.gifSize.width(),
+              result.gifSize.height());
     }
 
     void missingImageIsRefused()

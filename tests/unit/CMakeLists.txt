@@ -28,9 +28,10 @@ flameshot_add_unit_test(tst_capturehistory SOURCES utils/capturehistory.cpp)
 flameshot_add_unit_test(tst_actionlist SOURCES core/actionlist.cpp)
 flameshot_add_unit_test(tst_actionrunner SOURCES core/actionrunner.cpp core/actionlist.cpp)
 flameshot_add_unit_test(tst_hotkeys SOURCES core/hotkeyutils.cpp)
-flameshot_add_unit_test(tst_imageeffects SOURCES utils/imageeffects.cpp utils/beautifylayout.cpp utils/backgroundfx.cpp utils/autocolors.cpp utils/glassframe.cpp)
-flameshot_add_unit_test(tst_beautifylayout SOURCES utils/beautifylayout.cpp utils/imageeffects.cpp utils/backgroundfx.cpp utils/autocolors.cpp utils/glassframe.cpp)
-flameshot_add_unit_test(tst_animatedbg SOURCES utils/animatedbg.cpp utils/animatedframe.cpp utils/beautifylayout.cpp utils/imageeffects.cpp utils/backgroundfx.cpp utils/autocolors.cpp utils/glassframe.cpp)
+flameshot_add_unit_test(tst_imageeffects SOURCES utils/imageeffects.cpp utils/beautifylayout.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp utils/autocolors.cpp utils/glassframe.cpp)
+flameshot_add_unit_test(tst_beautifylayout SOURCES utils/beautifylayout.cpp utils/imageeffects.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp utils/autocolors.cpp utils/glassframe.cpp)
+flameshot_add_unit_test(tst_animatedbg SOURCES utils/animatedbg.cpp utils/animatedframe.cpp utils/easing.cpp utils/shotmotion.cpp utils/beautifylayout.cpp utils/imageeffects.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp utils/autocolors.cpp utils/glassframe.cpp)
+flameshot_add_unit_test(tst_easing SOURCES utils/easing.cpp)
 flameshot_add_unit_test(tst_gifquant SOURCES utils/gifquant.cpp)
 flameshot_add_unit_test(tst_recordingstate SOURCES core/recordingstate.cpp)
 flameshot_add_unit_test(tst_recordingedit SOURCES core/recordingedit.cpp)
@@ -87,6 +88,7 @@ if(APPLE)
     "${CMAKE_SOURCE_DIR}/src/utils/beautifylayout.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/imageeffects.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/backgroundfx.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/beautifypalette.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/autocolors.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/glassframe.cpp")
   target_include_directories(tst_videoedit PRIVATE "${CMAKE_SOURCE_DIR}/src")
@@ -107,10 +109,13 @@ if(APPLE)
     "${CMAKE_SOURCE_DIR}/src/core/recordingedit.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animatedbg.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animatedframe.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/easing.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/shotmotion.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/gifquant.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/beautifylayout.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/imageeffects.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/backgroundfx.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/beautifypalette.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/autocolors.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/glassframe.cpp")
   target_include_directories(tst_animexport PRIVATE "${CMAKE_SOURCE_DIR}/src")

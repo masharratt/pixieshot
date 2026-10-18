@@ -4,6 +4,7 @@
 #include "confighandler.h"
 #include "tools/capturetool.h"
 #include "utils/abstractlogger.h"
+#include "utils/beautifypalette.h"
 #include "utils/loginitem.h"
 #include "utils/valuehandler.h"
 #include "widgets/thumbnailgesture.h"
@@ -126,10 +127,14 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     OPTION("effectGlass"                 ,Bool               ( false         )),
     OPTION("effectGlassPx"               ,BoundedInt         ( 4, 64, 18     )),
     OPTION("effectGrain"                 ,BoundedInt         ( 0, 100, 0     )),
+    // Multi-stop gradient "#rrggbb,#rrggbb,..."; empty uses the two colours
+    OPTION("effectPalette"               ,String             ( ""            )),
     OPTION("beautifyAlways"              ,Bool               ( false         )),
-    // Animate: 0 Aurora, 1 Gradient shift, 2 Blobs, 3 Twinkle; format 0 MP4,
+    // Animate: 0 Aurora, 1 Gradient shift, 2 Blobs, 3 Twinkle, 4 Flow,
+    // 5 Silk; motion 0 none, 1 tilt and light sweep, 2 float; format 0 MP4,
     // 1 GIF, 2 both
-    OPTION("animStyle"                   ,BoundedInt         ( 0, 3, 0       )),
+    OPTION("animStyle"                   ,BoundedInt         ( 0, 5, 0       )),
+    OPTION("animMotion"                  ,BoundedInt         ( 0, 2, 1       )),
     OPTION("animDurationSec"             ,BoundedInt         ( 3, 10, 5      )),
     OPTION("animFps"                     ,BoundedInt         ( 15, 60, 30    )),
     OPTION("animFormat"                  ,BoundedInt         ( 0, 2, 0       )),
@@ -278,6 +283,7 @@ EffectSettings ConfigHandler::effectSettings()
     settings.glass = effectGlass();
     settings.glassPx = effectGlassPx();
     settings.grain = effectGrain();
+    settings.palette = beautifypalette::parse(effectPalette());
     return settings;
 }
 

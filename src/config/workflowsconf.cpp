@@ -2,6 +2,7 @@
 
 #include "workflowsconf.h"
 #include "utils/animatedframe.h"
+#include "utils/beautifypalette.h"
 #include "platform/screenrecorder.h"
 #include "utils/confighandler.h"
 #include "utils/imageeffects.h"
@@ -19,6 +20,7 @@
 #include <QLinearGradient>
 #include <QPainter>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QSlider>
 #include <QSpinBox>
 #include <QVBoxLayout>
@@ -60,6 +62,44 @@ QImage previewSample()
 #if defined(Q_OS_MACOS)
 // Preview frame rate; the loop takes as long as the export would
 constexpr int kAnimPreviewIntervalMs = 50;
+// Logical widths of the Animate previews
+constexpr int kAnimPreviewWidth = 300;
+constexpr int kAnimThumbWidth = 200;
+
+// A window-sized stand-in for a capture (title bar, sidebar, lines of
+// "text", a chart card and a button) so the previews show the real balance
+// of shot and background, and the thumbnail shows how small text reads
+QImage animPreviewSample()
+{
+    QImage sample(1280, 800, QImage::Format_ARGB32_Premultiplied);
+    sample.fill(QColor(245, 246, 250));
+    QPainter p(&sample);
+    p.fillRect(QRect(0, 0, 1280, 40), QColor(228, 230, 236));
+    const QColor dots[] = { QColor(255, 95, 87), QColor(254, 188, 46), QColor(40, 200, 64) };
+    p.setRenderHint(QPainter::Antialiasing);
+    for (int i = 0; i < 3; ++i) {
+        p.setPen(Qt::NoPen);
+        p.setBrush(dots[i]);
+        p.drawEllipse(QPoint(24 + 22 * i, 20), 7, 7);
+    }
+    p.fillRect(QRect(0, 40, 240, 760), QColor(236, 238, 244));
+    for (int i = 0; i < 9; ++i) {
+        p.fillRect(QRect(28, 80 + 44 * i, 140 - (i * 23) % 60, 12), QColor(120, 126, 140));
+    }
+    p.fillRect(QRect(290, 80, 520, 30), QColor(36, 40, 52));
+    for (int i = 0; i < 6; ++i) {
+        p.fillRect(QRect(290, 140 + 30 * i, 900 - (i * 137) % 260, 12),
+                   QColor(90, 96, 110));
+    }
+    QLinearGradient chart(290, 360, 1190, 720);
+    chart.setColorAt(0, QColor(70, 130, 220));
+    chart.setColorAt(1, QColor(240, 170, 60));
+    p.setBrush(chart);
+    p.drawRoundedRect(QRect(290, 340, 900, 360), 16, 16);
+    p.setBrush(QColor(236, 72, 96));
+    p.drawRoundedRect(QRect(1040, 730, 150, 44), 10, 10);
+    return sample;
+}
 #endif
 
 } // namespace
@@ -147,6 +187,16 @@ void WorkflowsConf::addEffectsGroup()
                           int(BackgroundMode::FromScreenshot));
     form->addRow(tr("Background"), m_background);
 
+    m_palettePreset = new QComboBox(box);
+    m_palettePreset->addItem(tr("Custom"), -1);
+    const auto& presets = beautifypalette::presets();
+    for (int i = 0; i < presets.size(); ++i) {
+        m_palettePreset->addItem(tr(presets.at(i).name), i);
+    }
+    m_palettePreset->setToolTip(
+      tr("Gradient colours for the background and the animated backgrounds."));
+    form->addRow(tr("Palette"), m_palettePreset);
+
     m_backgroundColor1 = new QPushButton(box);
     form->addRow(tr("Background color"), m_backgroundColor1);
 
@@ -232,11 +282,17 @@ void WorkflowsConf::addEffectsGroup()
             &QCheckBox::toggled,
             this,
             &WorkflowsConf::onEffectChanged);
+    connect(m_palettePreset,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &WorkflowsConf::onPalettePresetChanged);
+    // Picking a colour by hand leaves any preset palette (back to Custom)
     connect(m_backgroundColor1, &QPushButton::clicked, this, [this]() {
         const QColor picked = QColorDialog::getColor(
           m_backgroundColor1Value, this, tr("Background color"));
         if (picked.isValid()) {
             m_backgroundColor1Value = picked;
+            m_paletteValue.clear();
             onEffectChanged();
         }
     });
@@ -245,6 +301,7 @@ void WorkflowsConf::addEffectsGroup()
           m_backgroundColor2Value, this, tr("Gradient end color"));
         if (picked.isValid()) {
             m_backgroundColor2Value = picked;
+            m_paletteValue.clear();
             onEffectChanged();
         }
     });
@@ -274,7 +331,16 @@ void WorkflowsConf::addAnimateGroup()
     m_animStyle->addItem(tr("Gradient shift"), int(AnimStyle::GradientShift));
     m_animStyle->addItem(tr("Blobs"), int(AnimStyle::Blobs));
     m_animStyle->addItem(tr("Twinkle"), int(AnimStyle::Twinkle));
+    m_animStyle->addItem(tr("Flow"), int(AnimStyle::Flow));
+    m_animStyle->addItem(tr("Silk"), int(AnimStyle::Silk));
     form->addRow(tr("Style"), m_animStyle);
+
+    m_animMotion = new QComboBox(box);
+    m_animMotion->addItem(tr("None"), int(ShotMotion::None));
+    m_animMotion->addItem(tr("Tilt and light sweep"), int(ShotMotion::Tilt));
+    m_animMotion->addItem(tr("Float"), int(ShotMotion::Float));
+    m_animMotion->setToolTip(tr("How the screenshot itself moves in the loop."));
+    form->addRow(tr("Shot motion"), m_animMotion);
 
     m_animDuration = new QSpinBox(box);
     m_animDuration->setRange(3, 10);
@@ -296,16 +362,31 @@ void WorkflowsConf::addAnimateGroup()
 
     m_animPreview = new QLabel(box);
     m_animPreview->setAlignment(Qt::AlignCenter);
-    m_animPreview->setMinimumSize(180, 120);
+    m_animPreview->setMinimumSize(kAnimPreviewWidth, kAnimPreviewWidth * 2 / 3);
     // The timer only runs while the preview can be seen
     m_animPreview->installEventFilter(this);
     boxLayout->addWidget(m_animPreview, 1);
+
+    auto* thumbColumn = new QVBoxLayout();
+    thumbColumn->addStretch();
+    m_animThumb = new QLabel(box);
+    m_animThumb->setAlignment(Qt::AlignCenter);
+    m_animThumb->setFixedSize(kAnimThumbWidth, kAnimThumbWidth * 2 / 3);
+    m_animThumb->setToolTip(
+      tr("About the size it shows in a feed or chat: check the shot still reads."));
+    thumbColumn->addWidget(m_animThumb);
+    auto* thumbLabel = new QLabel(tr("Thumbnail"), box);
+    thumbLabel->setAlignment(Qt::AlignCenter);
+    thumbLabel->setEnabled(false);
+    thumbColumn->addWidget(thumbLabel);
+    thumbColumn->addStretch();
+    boxLayout->addLayout(thumbColumn);
 
     m_animTimer = new QTimer(this);
     m_animTimer->setInterval(kAnimPreviewIntervalMs);
     connect(m_animTimer, &QTimer::timeout, this, &WorkflowsConf::tickAnimPreview);
 
-    for (QComboBox* combo : { m_animStyle, m_animFormat }) {
+    for (QComboBox* combo : { m_animStyle, m_animMotion, m_animFormat }) {
         connect(combo,
                 QOverload<int>::of(&QComboBox::currentIndexChanged),
                 this,
@@ -327,6 +408,7 @@ void WorkflowsConf::onAnimChanged()
     }
     ConfigHandler config;
     config.setAnimStyle(m_animStyle->currentData().toInt());
+    config.setAnimMotion(m_animMotion->currentData().toInt());
     config.setAnimDurationSec(m_animDuration->value());
     config.setAnimFps(m_animFps->value());
     config.setAnimFormat(m_animFormat->currentData().toInt());
@@ -338,10 +420,25 @@ void WorkflowsConf::rebuildAnimPreview()
     if (m_animStyle == nullptr) {
         return;
     }
-    m_animFrames = std::make_unique<AnimatedFrames>(
-      previewSample(),
-      previewSettings(),
-      animatedbg::styleFrom(m_animStyle->currentData().toInt()));
+    static const QImage sample = animPreviewSample();
+    const EffectSettings settings = previewSettings();
+    const AnimStyle style = animatedbg::styleFrom(m_animStyle->currentData().toInt());
+    const auto motion = shotmotion::motionFrom(m_animMotion->currentData().toInt());
+    const qreal dpr = devicePixelRatioF();
+    // Rendered at the pixels shown, the way the export scales a capture
+    // down: the effects shrink with the shot
+    auto build = [&](int logicalWidth) {
+        auto frames = std::make_unique<AnimatedFrames>(
+          sample,
+          settings,
+          style,
+          animatedbg::kDefaultSeed,
+          int(std::lround(logicalWidth * dpr)));
+        frames->setMotion(motion, m_animDuration->value());
+        return frames;
+    };
+    m_animFrames = build(kAnimPreviewWidth);
+    m_animThumbFrames = build(kAnimThumbWidth);
     tickAnimPreview();
 }
 
@@ -350,9 +447,18 @@ void WorkflowsConf::tickAnimPreview()
     if (!m_animFrames) {
         return;
     }
-    const QImage frame = m_animFrames->frame(m_animPhase);
-    m_animPreview->setPixmap(QPixmap::fromImage(frame).scaled(
-      m_animPreview->minimumSize(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    const qreal dpr = devicePixelRatioF();
+    auto show = [&](QLabel* label, const AnimatedFrames& frames) {
+        QPixmap pixmap = QPixmap::fromImage(frames.frame(m_animPhase));
+        const QSize box = label->minimumSize() * dpr;
+        if (pixmap.width() > box.width() || pixmap.height() > box.height()) {
+            pixmap = pixmap.scaled(box, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+        pixmap.setDevicePixelRatio(dpr);
+        label->setPixmap(pixmap);
+    };
+    show(m_animPreview, *m_animFrames);
+    show(m_animThumb, *m_animThumbFrames);
     const double step =
       kAnimPreviewIntervalMs / (1000.0 * std::max(1, m_animDuration->value()));
     m_animPhase = std::fmod(m_animPhase + step, 1.0);
@@ -453,8 +559,39 @@ void WorkflowsConf::onEffectChanged()
     config.setEffectGlass(m_glass->isChecked());
     config.setEffectGlassPx(m_glassPx->value());
     config.setEffectGrain(m_grain->value());
+    config.setEffectPalette(beautifypalette::format(m_paletteValue));
     config.setBeautifyAlways(m_beautifyAlways->isChecked());
     updatePreview();
+}
+
+void WorkflowsConf::onPalettePresetChanged()
+{
+    if (m_updating) {
+        return;
+    }
+    const int index = m_palettePreset->currentData().toInt();
+    const auto& presets = beautifypalette::presets();
+    if (index >= 0 && index < presets.size()) {
+        m_paletteValue = presets.at(index).stops;
+        m_backgroundColor1Value = m_paletteValue.first();
+        m_backgroundColor2Value = m_paletteValue.last();
+    } else {
+        m_paletteValue.clear();
+    }
+    onEffectChanged();
+}
+
+void WorkflowsConf::syncPalettePreset()
+{
+    int index = -1;
+    const auto& presets = beautifypalette::presets();
+    for (int i = 0; i < presets.size(); ++i) {
+        if (!m_paletteValue.isEmpty() && presets.at(i).stops == m_paletteValue) {
+            index = i;
+        }
+    }
+    const QSignalBlocker block(m_palettePreset);
+    m_palettePreset->setCurrentIndex(std::max(0, m_palettePreset->findData(index)));
 }
 
 void WorkflowsConf::updatePreview()
@@ -479,6 +616,8 @@ void WorkflowsConf::updatePreview()
     m_backgroundColor1->setEnabled(
       manualColors && (mode == int(BackgroundMode::Solid) || gradientMode));
     m_autoColors->setEnabled(gradientMode);
+    m_palettePreset->setEnabled(gradientMode && manualColors);
+    syncPalettePreset();
     m_glassPx->setEnabled(m_glass->isChecked());
     m_grain->setEnabled(mode != int(BackgroundMode::None));
 
@@ -512,6 +651,7 @@ EffectSettings WorkflowsConf::previewSettings() const
     settings.glass = m_glass->isChecked();
     settings.glassPx = m_glassPx->value();
     settings.grain = m_grain->value();
+    settings.palette = m_paletteValue;
     return settings;
 }
 
@@ -560,6 +700,7 @@ void WorkflowsConf::updateComponents()
     m_glass->setChecked(config.effectGlass());
     m_glassPx->setValue(config.effectGlassPx());
     m_grain->setValue(config.effectGrain());
+    m_paletteValue = beautifypalette::parse(config.effectPalette());
     m_beautifyAlways->setChecked(config.beautifyAlways());
     for (auto it = m_recordShortcuts.begin(); it != m_recordShortcuts.end();
          ++it) {
@@ -574,6 +715,8 @@ void WorkflowsConf::updateComponents()
 #if defined(Q_OS_MACOS)
     m_animStyle->setCurrentIndex(
       std::max(0, m_animStyle->findData(config.animStyle())));
+    m_animMotion->setCurrentIndex(
+      std::max(0, m_animMotion->findData(config.animMotion())));
     m_animDuration->setValue(config.animDurationSec());
     m_animFps->setValue(config.animFps());
     m_animFormat->setCurrentIndex(

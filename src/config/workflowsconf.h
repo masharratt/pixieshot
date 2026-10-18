@@ -9,6 +9,7 @@
 #include <QWidget>
 
 #include <QColor>
+#include <QVector>
 
 #include <memory>
 
@@ -40,6 +41,9 @@ private:
     void addRecordingGroup();
     void onRecordingChanged();
     void onEffectChanged();
+    void onPalettePresetChanged();
+    // Shows the preset the current palette matches, or Custom
+    void syncPalettePreset();
     void updatePreview();
     // The Beautify settings as currently shown (not yet saved values)
     EffectSettings previewSettings() const;
@@ -69,6 +73,7 @@ private:
     QCheckBox* m_shadow = nullptr;
     QSpinBox* m_padding = nullptr;
     QComboBox* m_background = nullptr;
+    QComboBox* m_palettePreset = nullptr;
     QPushButton* m_backgroundColor1 = nullptr;
     QPushButton* m_backgroundColor2 = nullptr;
     QComboBox* m_aspect = nullptr;
@@ -87,15 +92,21 @@ private:
     QCheckBox* m_recordShowClicks = nullptr;
 #if defined(Q_OS_MACOS)
     QComboBox* m_animStyle = nullptr;
+    QComboBox* m_animMotion = nullptr;
     QSpinBox* m_animDuration = nullptr;
     QSpinBox* m_animFps = nullptr;
     QComboBox* m_animFormat = nullptr;
     QLabel* m_animPreview = nullptr;
+    // The same animation about as wide as a feed thumbnail, to judge how it
+    // reads small
+    QLabel* m_animThumb = nullptr;
     QTimer* m_animTimer = nullptr;
     std::unique_ptr<AnimatedFrames> m_animFrames;
+    std::unique_ptr<AnimatedFrames> m_animThumbFrames;
     double m_animPhase = 0.0;
 #endif
     QColor m_borderColorValue;
     QColor m_backgroundColor1Value;
     QColor m_backgroundColor2Value;
+    QVector<QColor> m_paletteValue; // empty: the two colours
 };

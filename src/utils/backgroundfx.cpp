@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "backgroundfx.h"
+#include "beautifypalette.h"
 
 #include <QLinearGradient>
 #include <QPainter>
@@ -193,14 +194,18 @@ QImage renderBackground(QSize canvas,
             break;
         case BackgroundMode::Gradient: {
             out = QImage(canvas, QImage::Format_RGB32);
-            const auto colors =
-              settings.autoColors
-                ? autoGradientColors(shot)
-                : std::pair{ settings.backgroundColor1, settings.backgroundColor2 };
+            QVector<QColor> stops;
+            if (settings.autoColors) {
+                const auto colors = autoGradientColors(shot);
+                stops = { colors.first, colors.second };
+            } else {
+                stops = beautifypalette::stopsOf(settings);
+            }
             QPainter p(&out);
             QLinearGradient gradient(0, 0, out.width(), out.height());
-            gradient.setColorAt(0, colors.first);
-            gradient.setColorAt(1, colors.second);
+            for (int i = 0; i < stops.size(); ++i) {
+                gradient.setColorAt(double(i) / (stops.size() - 1), stops.at(i));
+            }
             p.fillRect(out.rect(), gradient);
             break;
         }

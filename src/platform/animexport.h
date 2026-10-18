@@ -6,6 +6,7 @@
 
 #include "utils/animatedbg.h"
 #include "utils/imageeffects.h"
+#include "utils/shotmotion.h"
 
 #include <QImage>
 #include <QSize>
@@ -26,6 +27,7 @@ struct AnimExportParams
     QImage shot; // the capture, its devicePixelRatio sizes the effects
     EffectSettings effects;
     AnimStyle style = AnimStyle::Aurora;
+    ShotMotion motion = ShotMotion::None;
     uint32_t seed = animatedbg::kDefaultSeed;
     int durationSec = 5;
     int fps = 30;      // MP4; the GIF uses min(fps, kAnimGifMaxFps)

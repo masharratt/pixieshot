@@ -4,6 +4,7 @@
 #include "sanitizer.h"
 #include "utils/backgroundfx.h"
 #include "utils/beautifylayout.h"
+#include "utils/beautifypalette.h"
 #include "utils/imageeffects.h"
 
 #include <QElapsedTimer>
@@ -759,6 +760,73 @@ private slots:
         QVERIFY(!out.isNull());
         QVERIFY2(fromShot < bound, qPrintable(QString::number(fromShot)));
         QVERIFY2(autoColors < bound, qPrintable(QString::number(autoColors)));
+    }
+
+    // Multi-stop palette: the gradient background runs first stop at the
+    // top-left corner to last stop at the bottom-right, through the others
+    void multiStopGradientHitsEveryStop()
+    {
+        const QVector<QColor> sunset = beautifypalette::parse(
+          QStringLiteral("#FFD601,#FF6118,#EE30FB,#FB76FA,#7232F1"));
+        QCOMPARE(sunset.size(), 5);
+        EffectSettings s;
+        s.backgroundMode = BackgroundMode::Gradient;
+        s.palette = sunset;
+        const QImage bg = backgroundfx::renderBackground(QSize(401, 401), s, QImage());
+        auto close = [](QRgb a, const QColor& b, int tol) {
+            return std::abs(qRed(a) - b.red()) <= tol &&
+                   std::abs(qGreen(a) - b.green()) <= tol &&
+                   std::abs(qBlue(a) - b.blue()) <= tol;
+        };
+        QVERIFY2(close(bg.pixel(0, 0), sunset.first(), 3),
+                 qPrintable(QColor(bg.pixel(0, 0)).name()));
+        QVERIFY2(close(bg.pixel(400, 400), sunset.last(), 3),
+                 qPrintable(QColor(bg.pixel(400, 400)).name()));
+        QVERIFY2(close(bg.pixel(200, 200), sunset.at(2), 6),
+                 qPrintable(QColor(bg.pixel(200, 200)).name()));
+        // Without a palette the two colours are used, as before
+        s.palette.clear();
+        const QImage two = backgroundfx::renderBackground(QSize(401, 401), s, QImage());
+        QVERIFY(close(two.pixel(0, 0), s.backgroundColor1, 3));
+        QVERIFY(close(two.pixel(400, 400), s.backgroundColor2, 3));
+    }
+
+    void paletteTextRoundTrips()
+    {
+        QCOMPARE(beautifypalette::parse(QString()), QVector<QColor>());
+        // One valid colour is not a palette
+        QCOMPARE(beautifypalette::parse(QStringLiteral("#ff0000,nonsense")),
+                 QVector<QColor>());
+        const QVector<QColor> stops{ QColor(0x0f, 0x17, 0x2a), QColor(0x6d, 0x28, 0xd9) };
+        QCOMPARE(beautifypalette::parse(beautifypalette::format(stops)), stops);
+        QCOMPARE(beautifypalette::format(stops), QStringLiteral("#0f172a,#6d28d9"));
+    }
+
+    void presetsAreTheAgreedOnes()
+    {
+        const auto& presets = beautifypalette::presets();
+        QCOMPARE(presets.size(), 3);
+        QCOMPARE(QString::fromLatin1(presets.at(0).name), QStringLiteral("Sunset Pop"));
+        QCOMPARE(beautifypalette::format(presets.at(0).stops),
+                 QStringLiteral("#ffd601,#ff6118,#ee30fb,#fb76fa,#7232f1"));
+        QCOMPARE(QString::fromLatin1(presets.at(1).name), QStringLiteral("Midnight"));
+        QCOMPARE(beautifypalette::format(presets.at(1).stops),
+                 QStringLiteral("#0f172a,#6d28d9"));
+        QCOMPARE(QString::fromLatin1(presets.at(2).name), QStringLiteral("Ocean"));
+        QCOMPARE(beautifypalette::format(presets.at(2).stops),
+                 QStringLiteral("#0ea5e9,#1e3a8a"));
+    }
+
+    void stopsFollowTheSettings()
+    {
+        EffectSettings s;
+        QCOMPARE(beautifypalette::stopsOf(s),
+                 (QVector<QColor>{ s.backgroundColor1, s.backgroundColor2 }));
+        s.palette = beautifypalette::presets().at(0).stops;
+        QCOMPARE(beautifypalette::stopsOf(s), s.palette);
+        QCOMPARE(beautifypalette::colorAt(s.palette, 0.0), s.palette.first());
+        QCOMPARE(beautifypalette::colorAt(s.palette, 1.0), s.palette.last());
+        QCOMPARE(beautifypalette::colorAt(s.palette, 0.5), s.palette.at(2));
     }
 };
 

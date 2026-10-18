@@ -82,8 +82,9 @@ Mp4Result writeMp4(const AnimExportParams& p,
                    QSize* size,
                    QString* error)
 {
-    const AnimatedFrames frames(
+    AnimatedFrames frames(
       p.shot, p.effects, p.style, p.seed, kAnimMp4MaxLongSide, true);
+    frames.setMotion(p.motion, p.durationSec);
     const QSize px = frames.size();
     *size = px;
     const int fps = std::clamp(p.fps, 1, 120);
@@ -226,8 +227,9 @@ bool writeGif(const AnimExportParams& p,
     // defeats the GIF's LZW compression (it roughly doubles the file)
     EffectSettings effects = p.effects;
     effects.grain = 0;
-    const AnimatedFrames frames(
+    AnimatedFrames frames(
       p.shot, effects, p.style, p.seed, kAnimGifMaxLongSide, false);
+    frames.setMotion(p.motion, p.durationSec);
     *size = frames.size();
     const int count = animFrameCount(p.durationSec, animGifFps(p.fps));
     *frameCount = count;
@@ -261,10 +263,14 @@ bool writeGif(const AnimExportParams& p,
     }
     for (int i = 0; ok && i < count; ++i) {
         @autoreleasepool {
-            // The shot is not dithered: it is static, so its pixels stay
-            // the same in every frame
+            // The shot is not dithered: at rest its pixels stay the same in
+            // every frame, and moving it would make the dither crawl
+            const double phase = double(i) / count;
             const QImage indexed = gifquant::quantize(
-              frames.frame(double(i) / count), palette, frames.layout().shot);
+              frames.frame(phase),
+              palette,
+              frames.shotBounds(
+                shotmotion::poseAt(p.motion, phase, p.durationSec)));
             CGImageRef image = indexedImage(indexed, space);
             if (image == NULL) {
                 *error = QStringLiteral("Could not make a GIF frame.");

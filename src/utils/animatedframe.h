@@ -10,6 +10,7 @@
 #include "utils/animatedbg.h"
 #include "utils/beautifylayout.h"
 #include "utils/imageeffects.h"
+#include "utils/shotmotion.h"
 
 #include <QImage>
 #include <QPoint>
@@ -41,8 +42,19 @@ public:
     const QImage& shotLayer() const { return m_shot; }
     const std::pair<QColor, QColor>& colors() const { return m_colors; }
 
+    // Moves the shot layer (shot, border, glass bezel) with `motion` over a
+    // loop of durationSec. Default: None, the shot stays where the still has
+    // it.
+    void setMotion(ShotMotion motion, double durationSec);
+    ShotMotion motion() const { return m_motion; }
+    double durationSec() const { return m_durationSec; }
+
     // The frame at phase 0..1 (1 is the same as 0). Opaque Format_RGB32.
     QImage frame(double phase) const;
+    // The frame with the background at `phase` and the shot at `pose`
+    QImage frameAt(double phase, const shotmotion::Pose& pose) const;
+    // Canvas pixels the shot (with border, not bezel) can cover at `pose`
+    QRect shotBounds(const shotmotion::Pose& pose) const;
 
 private:
     EffectSettings m_settings;
@@ -56,4 +68,7 @@ private:
     QImage m_shadow; // shadow alone, null when off
     QPoint m_shadowPos;
     bool m_glass = false;
+    QVector<QColor> m_stops;
+    ShotMotion m_motion = ShotMotion::None;
+    double m_durationSec = 5.0;
 };

@@ -2,6 +2,7 @@
 
 #include "animatedbg.h"
 #include "backgroundfx.h"
+#include "beautifypalette.h"
 
 #include <QVector>
 #include <algorithm>
@@ -78,17 +79,46 @@ private:
 struct Palette
 {
     Rgb a;     // first colour
-    Rgb b;     // second colour
+    Rgb b;     // last colour
     Rgb light; // a light tint of their mix, for highlights
     Rgb deep;  // a dark shade of their mix, for the ground
+    QVector<Rgb> stops; // all colours, first to last (two or more)
+
+    bool multi() const { return stops.size() > 2; }
+    // Colour at t (0..1) along the stops; with two stops mix(a, b, t)
+    Rgb along(float t) const
+    {
+        if (!multi()) {
+            return mix(a, b, t);
+        }
+        const float pos = std::clamp(t, 0.f, 1.f) * float(stops.size() - 1);
+        const int i = std::min(int(pos), int(stops.size()) - 2);
+        return mix(stops[i], stops[i + 1], pos - float(i));
+    }
+    // The i-th of n colours spread over the stops
+    Rgb spread(int i, int n) const
+    {
+        return along(n <= 1 ? 0.f : float(i) / float(n - 1));
+    }
 };
 
-Palette paletteOf(const std::pair<QColor, QColor>& colors)
+Palette paletteOf(const QVector<QColor>& colors)
 {
     Palette p;
-    p.a = rgbOf(colors.first);
-    p.b = rgbOf(colors.second);
-    const Rgb mid = mix(p.a, p.b, 0.5f);
+    for (const QColor& c : colors) {
+        p.stops << rgbOf(c);
+    }
+    p.a = p.stops.first();
+    p.b = p.stops.last();
+    Rgb mid = mix(p.a, p.b, 0.5f);
+    if (p.multi()) {
+        // The average of every stop, so the middle colours count too
+        mid = { 0, 0, 0 };
+        for (const Rgb& c : p.stops) {
+            mid = { mid.r + c.r, mid.g + c.g, mid.b + c.b };
+        }
+        mid = scale(mid, 1.f / float(p.stops.size()));
+    }
     p.light = lighter(mid, 0.35f);
     p.deep = scale(mid, 0.55f);
     return p;
@@ -120,7 +150,7 @@ void renderGradientShift(QImage& out, const Palette& pal, float T, Random& rnd)
             // -1..1 along the axis, eased so the middle is a long blend
             float t = std::clamp((col[x] + row) * 0.5f + 0.5f, 0.f, 1.f);
             t = t * t * (3.f - 2.f * t);
-            line[x] = pack(mix(pal.a, pal.b, t));
+            line[x] = pack(pal.along(t));
         }
     }
 }
@@ -130,9 +160,12 @@ void renderAurora(QImage& out, const Palette& pal, float T, Random& rnd)
     const int w = out.width();
     const int h = out.height();
     constexpr int kBands = 3;
-    const Rgb colors[kBands] = { lighter(pal.a, 0.25f),
-                                 lighter(pal.b, 0.3f),
-                                 pal.light };
+    // With more than two stops the bands take the middle colours
+    const Rgb colors[kBands] = {
+        lighter(pal.multi() ? pal.spread(1, 4) : pal.a, 0.25f),
+        lighter(pal.multi() ? pal.spread(2, 4) : pal.b, 0.3f),
+        pal.multi() ? lighter(pal.spread(3, 4), 0.2f) : pal.light
+    };
     struct Band
     {
         float base, amp1, freq1, amp2, freq2, width, glowFreq;
@@ -195,9 +228,14 @@ void renderBlobs(QImage& out, const Palette& pal, float T, Random& rnd, uint32_t
     const int w = out.width();
     const int h = out.height();
     const int count = 3 + int(seed % 3);
-    const Rgb colors[5] = {
+    Rgb colors[5] = {
         pal.a, pal.b, pal.light, lighter(pal.a, 0.15f), lighter(pal.b, 0.15f)
     };
+    if (pal.multi()) {
+        for (int j = 0; j < 5; ++j) {
+            colors[j] = pal.spread((j * 3) % 5, 5); // stops interleaved
+        }
+    }
     const float unit = float(std::max(w, h));
     const Rgb ground = mix(pal.deep, mix(pal.a, pal.b, 0.5f), 0.4f);
     constexpr float kGroundWeight = 0.35f;
@@ -251,7 +289,7 @@ void renderTwinkle(QImage& out, const Palette& pal, float T, Random& rnd)
         QRgb* line = reinterpret_cast<QRgb*>(out.scanLine(y));
         for (int x = 0; x < w; ++x) {
             const float t = std::clamp((x * float(w) + y * float(h)) * norm, 0.f, 1.f);
-            line[x] = pack(mix(pal.a, pal.b, t));
+            line[x] = pack(pal.along(t));
         }
     }
     // Sparkles: a soft glow and a faint four-point cross, each fading in
@@ -294,6 +332,202 @@ void renderTwinkle(QImage& out, const Palette& pal, float T, Random& rnd)
     }
 }
 
+// Flow: a bold slanted gradient through all the stops, warped like liquid,
+// with soft ribbons of the other colours flowing through it
+void renderFlow(QImage& out, const Palette& pal, float T, Random& rnd)
+{
+    const int w = out.width();
+    const int h = out.height();
+    const float unit = float(std::max(w, h));
+    // The axis runs down to the right, about 28 degrees below horizontal
+    const float angle = 0.49f + rnd.range(-0.08f, 0.08f);
+    const float ca = std::cos(angle);
+    const float sa = std::sin(angle);
+    const float span = std::abs(ca) * w + std::abs(sa) * h;
+    struct Wave
+    {
+        float amp, freq, ph;
+        int speed;
+    };
+    const Wave warp[2] = {
+        { 0.07f, rnd.range(0.7f, 1.1f), rnd.range(0.f, kTau), 1 },
+        { 0.03f, rnd.range(1.6f, 2.4f), rnd.range(0.f, kTau), -2 },
+    };
+    constexpr int kRibbons = 4;
+    struct Ribbon
+    {
+        float centre, amp, freq, ph, width;
+        int speed;
+        Rgb color;
+    };
+    std::array<Ribbon, kRibbons> ribbons{};
+    for (int i = 0; i < kRibbons; ++i) {
+        Ribbon& r = ribbons[i];
+        r.centre = 0.2f + 0.2f * i + rnd.range(-0.04f, 0.04f);
+        r.amp = rnd.range(0.04f, 0.08f);
+        r.freq = rnd.range(0.6f, 1.2f);
+        r.ph = rnd.range(0.f, kTau);
+        r.width = rnd.range(0.035f, 0.06f);
+        r.speed = (i % 2 == 0) ? 1 : -1;
+        // A colour from elsewhere on the axis, so the ribbon reads against
+        // the ground it crosses
+        float pick = r.centre + 0.45f;
+        pick -= std::floor(pick);
+        r.color = lighter(pal.along(pick), 0.12f);
+    }
+    // Everything that moves depends only on the position across the axis
+    // (q), so it is tabulated once per frame along q and interpolated
+    const float qMin = -0.5f * (std::abs(sa) * w + std::abs(ca) * h) - 1.f;
+    const int steps = int(std::ceil(-2.f * qMin)) + 2;
+    QVector<float> table(steps * (1 + kRibbons));
+    for (int i = 0; i < steps; ++i) {
+        const float q = (qMin + float(i)) / unit;
+        float wv = 0.f;
+        for (const Wave& wave : warp) {
+            wv += wave.amp * std::sin(kTau * wave.freq * q + wave.speed * T + wave.ph);
+        }
+        float* row = table.data() + i * (1 + kRibbons);
+        row[0] = wv;
+        for (int r = 0; r < kRibbons; ++r) {
+            const Ribbon& rb = ribbons[r];
+            row[1 + r] = rb.centre +
+                         rb.amp * std::sin(kTau * rb.freq * q + rb.speed * T + rb.ph) +
+                         0.6f * wv;
+        }
+    }
+    const Rgb white{ 1, 1, 1 };
+    for (int y = 0; y < h; ++y) {
+        QRgb* line = reinterpret_cast<QRgb*>(out.scanLine(y));
+        const float Y = y + 0.5f - h / 2.f;
+        for (int x = 0; x < w; ++x) {
+            const float X = x + 0.5f - w / 2.f;
+            const float a = (X * ca + Y * sa) / span + 0.5f;
+            const float qi = std::clamp(-X * sa + Y * ca - qMin, 0.f, float(steps - 2));
+            const int i0 = int(qi);
+            const float f = qi - float(i0);
+            const float* r0 = table.constData() + i0 * (1 + kRibbons);
+            const float* r1 = r0 + (1 + kRibbons);
+            const float wv = r0[0] + (r1[0] - r0[0]) * f;
+            float t = std::clamp(a + wv, 0.f, 1.f);
+            t = t * t * (3.f - 2.f * t);
+            Rgb c = pal.along(t);
+            for (int r = 0; r < kRibbons; ++r) {
+                const float centre = r0[1 + r] + (r1[1 + r] - r0[1 + r]) * f;
+                const float d = (a - centre) / ribbons[r].width;
+                if (d < -3.f || d > 3.f) {
+                    continue;
+                }
+                c = mix(c, ribbons[r].color, 0.55f * std::exp(-d * d));
+                // A glossy edge on the leading side, like a liquid surface
+                const float e = (d - 0.7f) / 0.35f;
+                c = screen(c, white, 0.18f * std::exp(-e * e));
+            }
+            line[x] = pack(c);
+        }
+    }
+}
+
+// Silk: fine strands twisting through a band across a deep ground. Where a
+// strand faces the viewer it is wide and lit; turned away it is thin and
+// in shade, so the band reads as one twisting ribbon of fabric.
+void renderSilk(QImage& out, const Palette& pal, float T, Random& rnd)
+{
+    const int w = out.width();
+    const int h = out.height();
+    constexpr int kStrands = 26;
+    const float fh = float(h);
+    // Ground: deep shades of the outer stops
+    const Rgb top = scale(pal.along(0.1f), 0.22f);
+    const Rgb bottom = scale(pal.along(0.9f), 0.28f);
+    QVector<Rgb> buf(w * h);
+    for (int y = 0; y < h; ++y) {
+        const Rgb g = mix(top, bottom, (y + 0.5f) / fh);
+        std::fill(buf.begin() + y * w, buf.begin() + (y + 1) * w, g);
+    }
+    // The band's shape is mostly fixed; only a little of it drifts, slowly,
+    // so the strands never slide fast enough to flicker
+    const float c0 = rnd.range(0.42f, 0.58f);
+    const float shapeAmp = rnd.range(0.12f, 0.18f);
+    const float shapeFreq = rnd.range(0.5f, 0.8f);
+    const float shapePh = rnd.range(0.f, kTau);
+    const float driftFreq = rnd.range(1.0f, 1.5f);
+    const float driftPh = rnd.range(0.f, kTau);
+    const float fanFreq = rnd.range(0.6f, 0.9f);
+    const float fanPh = rnd.range(0.f, kTau);
+    const float twistFreq = rnd.range(0.9f, 1.4f);
+    const float twistPh = rnd.range(0.f, kTau);
+    std::array<float, kStrands> ripplePh{};
+    for (float& ph : ripplePh) {
+        ph = rnd.range(0.f, kTau);
+    }
+    struct Seg
+    {
+        float y, sigma, alpha;
+        Rgb color;
+    };
+    std::array<Seg, kStrands> front{};
+    std::array<Seg, kStrands> back{};
+    const float minSigma = std::max(1.1f, 0.0045f * fh);
+    for (int x = 0; x < w; ++x) {
+        const float u = (x + 0.5f) / float(w);
+        const float centre = c0 + shapeAmp * std::sin(kTau * shapeFreq * u + shapePh) +
+                             0.012f * std::sin(kTau * driftFreq * u + T + driftPh);
+        const float spread = 0.34f + 0.12f * std::sin(kTau * fanFreq * u + fanPh) +
+                             0.02f * std::sin(kTau * 0.9f * u - T + fanPh);
+        int nFront = 0;
+        int nBack = 0;
+        for (int i = 0; i < kStrands; ++i) {
+            const float ti = float(i) / float(kStrands - 1);
+            const float y = (centre + (ti - 0.5f) * spread +
+                             0.006f * std::sin(kTau * 3.f * u + ripplePh[i])) *
+                            fh;
+            const float theta = kTau * twistFreq * u + 2.f * T + 0.24f * float(i) + twistPh;
+            const float cs = std::cos(theta);
+            const float face = std::abs(cs);
+            const Rgb base = pal.along(ti);
+            Seg seg;
+            seg.y = y;
+            seg.sigma = minSigma * (0.7f + 0.9f * face);
+            // Edge-on (face 0) both sides are the same faint mid shade, so a
+            // strand turning over changes smoothly
+            const Rgb edge = scale(base, 0.7f);
+            if (cs >= 0.f) {
+                seg.color = mix(edge, lighter(base, 0.5f), face * face);
+                seg.alpha = 0.12f + 0.78f * face;
+                front[nFront++] = seg;
+            } else {
+                seg.color = mix(edge, scale(base, 0.4f), face);
+                seg.alpha = 0.12f + 0.38f * face;
+                back[nBack++] = seg;
+            }
+        }
+        // Back strands first, the lit front ones over them
+        auto paint = [&](const std::array<Seg, kStrands>& segs, int n) {
+            for (int k = 0; k < n; ++k) {
+                const Seg& sg = segs[k];
+                const float reach = 3.f * sg.sigma;
+                const int y0 = std::max(0, int(std::floor(sg.y - reach)));
+                const int y1 = std::min(h - 1, int(std::ceil(sg.y + reach)));
+                const float inv = 1.f / sg.sigma;
+                for (int yy = y0; yy <= y1; ++yy) {
+                    const float d = (yy + 0.5f - sg.y) * inv;
+                    Rgb& px = buf[yy * w + x];
+                    px = mix(px, sg.color, sg.alpha * std::exp(-d * d));
+                }
+            }
+        };
+        paint(back, nBack);
+        paint(front, nFront);
+    }
+    for (int y = 0; y < h; ++y) {
+        QRgb* line = reinterpret_cast<QRgb*>(out.scanLine(y));
+        const Rgb* src = buf.constData() + y * w;
+        for (int x = 0; x < w; ++x) {
+            line[x] = pack(src[x]);
+        }
+    }
+}
+
 } // namespace
 
 namespace animatedbg {
@@ -315,8 +549,18 @@ QImage renderWork(AnimStyle style,
                   double phase,
                   uint32_t seed)
 {
+    return renderWorkStops(
+      style, QVector<QColor>{ colors.first, colors.second }, size, phase, seed);
+}
+
+QImage renderWorkStops(AnimStyle style,
+                       const QVector<QColor>& stops,
+                       QSize size,
+                       double phase,
+                       uint32_t seed)
+{
     QImage out(workSize(size), QImage::Format_RGB32);
-    if (out.isNull()) {
+    if (out.isNull() || stops.isEmpty()) {
         return out;
     }
     // Wrap first: phase 1 is exactly phase 0, not sin(2 pi) ~ 1e-16
@@ -325,7 +569,9 @@ QImage renderWork(AnimStyle style,
         p = 0.0;
     }
     const float T = float(p * 2.0 * M_PI);
-    const Palette pal = paletteOf(colors);
+    const Palette pal =
+      paletteOf(stops.size() == 1 ? QVector<QColor>{ stops.first(), stops.first() }
+                                  : stops);
     // The style takes part in the seed so styles do not share parameters
     Random rnd(seed * 4u + uint32_t(style));
     switch (style) {
@@ -341,6 +587,12 @@ QImage renderWork(AnimStyle style,
         case AnimStyle::Twinkle:
             renderTwinkle(out, pal, T, rnd);
             break;
+        case AnimStyle::Flow:
+            renderFlow(out, pal, T, rnd);
+            break;
+        case AnimStyle::Silk:
+            renderSilk(out, pal, T, rnd);
+            break;
     }
     return out;
 }
@@ -351,7 +603,17 @@ QImage renderFrame(AnimStyle style,
                    double phase,
                    uint32_t seed)
 {
-    QImage work = renderWork(style, colors, size, phase, seed);
+    return renderFrameStops(
+      style, QVector<QColor>{ colors.first, colors.second }, size, phase, seed);
+}
+
+QImage renderFrameStops(AnimStyle style,
+                        const QVector<QColor>& stops,
+                        QSize size,
+                        double phase,
+                        uint32_t seed)
+{
+    QImage work = renderWorkStops(style, stops, size, phase, seed);
     if (work.size() == size || work.isNull()) {
         return work;
     }
@@ -375,9 +637,23 @@ std::pair<QColor, QColor> colorsFor(const EffectSettings& settings,
     return { settings.backgroundColor1, settings.backgroundColor2 };
 }
 
+QVector<QColor> stopsFor(const EffectSettings& settings, const QImage& shot)
+{
+    const bool usesShot =
+      !shot.isNull() &&
+      (settings.backgroundMode == BackgroundMode::FromScreenshot ||
+       (settings.backgroundMode == BackgroundMode::Gradient && settings.autoColors));
+    if (settings.backgroundMode == BackgroundMode::Gradient && !usesShot &&
+        settings.palette.size() >= 2) {
+        return settings.palette;
+    }
+    const auto pair = colorsFor(settings, shot);
+    return { pair.first, pair.second };
+}
+
 AnimStyle styleFrom(int value)
 {
-    return AnimStyle(std::clamp(value, 0, 3));
+    return AnimStyle(std::clamp(value, 0, kAnimStyleCount - 1));
 }
 
 } // namespace animatedbg

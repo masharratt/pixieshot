@@ -5,6 +5,7 @@
 #include <QColor>
 #include <QImage>
 #include <QPoint>
+#include <QVector>
 
 enum class BackgroundMode
 {
@@ -31,6 +32,10 @@ struct EffectSettings
     BackgroundMode backgroundMode = BackgroundMode::None;
     QColor backgroundColor1 = QColor(0x8B, 0x5C, 0xF6);
     QColor backgroundColor2 = QColor(0x3B, 0x82, 0xF6);
+    // Optional multi-stop gradient (first stop top-left, last bottom-right).
+    // Used instead of the two colours when it has two or more stops; empty
+    // by default. See utils/beautifypalette.h.
+    QVector<QColor> palette;
     // 0 off, 1 square 1:1, 2 landscape 16:9, 3 portrait 9:16, 4 social 4:5,
     // 5 classic 4:3. Grows the canvas (never crops) to the ratio.
     int aspect = 0;

@@ -36,6 +36,9 @@ target_sources(
           glassframe.cpp
           animatedbg.cpp
           animatedframe.cpp
+          easing.cpp
+          shotmotion.cpp
+          beautifypalette.cpp
           gifquant.cpp
           scrollstitch.cpp
           loginitem.cpp
