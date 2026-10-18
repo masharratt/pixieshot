@@ -170,7 +170,9 @@ public:
     CONFIG_GETTER_SETTER(animAnnotations, setAnimAnnotations, int)
 
     // All effect options as one value, the single place that reads them
-    EffectSettings effectSettings();
+    // The saved Beautify settings; keys in `overlay` (option name -> plain
+    // value, e.g. from a style pack) replace the saved ones without writing
+    EffectSettings effectSettings(const QVariantMap& overlay = {});
     CONFIG_GETTER_SETTER(captureHistoryMax, setCaptureHistoryMax, int)
     CONFIG_GETTER_SETTER(gifFps, setGifFps, int)
     CONFIG_GETTER_SETTER(gifMaxWidth, setGifMaxWidth, int)

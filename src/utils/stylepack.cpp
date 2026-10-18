@@ -26,6 +26,7 @@ const auto kFormatValue = QStringLiteral("pixiestyle");
 const auto kVersionKey = QStringLiteral("version");
 const auto kNameKey = QStringLiteral("name");
 const auto kAuthorKey = QStringLiteral("author");
+const auto kDescriptionKey = QStringLiteral("description");
 const auto kSettingsKey = QStringLiteral("settings");
 
 // Longest file name stem; leaves room for the suffix in common limits
@@ -214,6 +215,9 @@ ParseResult parse(const QByteArray& bytes)
         r.pack.name = tr("Untitled style");
     }
     r.pack.author = root.value(kAuthorKey).toString().trimmed();
+    r.pack.description =
+      root.value(kDescriptionKey).toString().simplified().left(
+        kMaxDescriptionLength);
     const QJsonObject settings = root.value(kSettingsKey).toObject();
     for (auto it = settings.constBegin(); it != settings.constEnd(); ++it) {
         const QVariant value = normalise(it.key(), it.value());
@@ -239,6 +243,9 @@ QByteArray serialize(const Pack& pack)
     root.insert(kNameKey, pack.name);
     if (!pack.author.isEmpty()) {
         root.insert(kAuthorKey, pack.author);
+    }
+    if (!pack.description.isEmpty()) {
+        root.insert(kDescriptionKey, pack.description);
     }
     root.insert(kSettingsKey, settings);
     return QJsonDocument(root).toJson(QJsonDocument::Indented);

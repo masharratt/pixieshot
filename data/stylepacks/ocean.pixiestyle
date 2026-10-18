@@ -3,6 +3,7 @@
     "version": 1,
     "name": "Ocean",
     "author": "Pixieshot",
+    "description": "Cool sky-blue to deep-sea gradient with soft flowing light. Calm and clean.",
     "settings": {
         "animStyle": 0,
         "effectAspect": 0,
