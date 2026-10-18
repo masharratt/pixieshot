@@ -177,7 +177,9 @@ void ScrollCaptureController::onFrame(const QImage& frame)
         if (++m_failedGrabs >= kMaxFailedGrabs) {
             fail(tr("Could not grab the selected area."));
         } else if (m_machine.mode() == ScrollMode::Auto) {
-            scrollAndGrab();
+            // Retry the grab without scrolling again, or the content would
+            // move a whole view between two good frames
+            grabAfterSettle();
         }
         return;
     }
@@ -311,11 +313,22 @@ void ScrollCaptureController::scrollAndGrab()
 {
     // Half the area per step keeps a wide overlap between frames
     const int points = qMax(20, m_rect.height() / 2);
-    if (!postScrollDown(m_rect.center(), m_rect, m_scrollSign * points)) {
+    // The pointer is only pulled back when it is away from both the area and
+    // the control bar, so the user can reach the bar's buttons
+    QRect keepInside = m_rect;
+    if (m_bar) {
+        keepInside = keepInside.united(m_bar->frameGeometry());
+    }
+    if (!postScrollDown(m_rect.center(), keepInside, m_scrollSign * points)) {
         stopAuto(tr("Could not send scroll events. Scroll by hand or press "
                     "Done."));
         return;
     }
+    grabAfterSettle();
+}
+
+void ScrollCaptureController::grabAfterSettle()
+{
     const quint64 session = m_session;
     QTimer::singleShot(kAutoSettleMs, this, [this, session]() {
         if (isCurrent(session) && m_machine.mode() == ScrollMode::Auto) {
@@ -355,9 +368,11 @@ void ScrollCaptureController::finish()
     m_machine.transition(ScrollState::Done);
     QPixmap pixmap = QPixmap::fromImage(image);
     pixmap.setDevicePixelRatio(m_pixelRatio);
-    const QRect globalRect(
-      m_rect.topLeft(),
-      QSize(m_rect.width(), qRound(image.height() / m_pixelRatio)));
+    // Size from the image: when the selection spans two displays, only the
+    // part on one of them was grabbed
+    const QRect globalRect(m_rect.topLeft(),
+                           QSize(qRound(image.width() / m_pixelRatio),
+                                 qRound(image.height() / m_pixelRatio)));
     cleanup();
     m_machine.transition(ScrollState::Idle);
     emit captured(pixmap, globalRect);

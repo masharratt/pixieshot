@@ -42,6 +42,8 @@ flameshot_add_unit_test(tst_editorvisibility SOURCES widgets/editorvisibility.cp
 flameshot_add_unit_test(tst_thumbnailgesture SOURCES widgets/thumbnailgesture.cpp)
 flameshot_add_unit_test(tst_capturedelay SOURCES core/capturedelay.cpp)
 flameshot_add_unit_test(tst_scrollstitch SOURCES utils/scrollstitch.cpp)
+flameshot_add_unit_test(tst_outputpath SOURCES utils/outputpath.cpp)
+flameshot_add_unit_test(tst_loginitem SOURCES utils/loginitem.cpp)
 flameshot_add_unit_test(tst_scrollcapturestate SOURCES core/scrollcapturestate.cpp)
 # Every drawable tool, built against an in-memory ConfigHandler so the test
 # never reads or writes the user's settings

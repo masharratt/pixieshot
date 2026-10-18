@@ -52,6 +52,7 @@ constexpr const char* visibleInDockProperty = "_visibleInDock";
 #include "core/qguiappcurrentscreen.h"
 #include "core/recordingcontroller.h"
 #include "core/scrollcapturecontroller.h"
+#include "platform/screenaccess.h"
 #include "platform/screenrecorder.h"
 #include "utils/abstractlogger.h"
 #include "utils/capturehistory.h"
@@ -212,12 +213,6 @@ Flameshot::Flameshot()
                 exportCapture(image, selection, req);
             });
 
-#if defined(Q_OS_MACOS)
-    // Request Screen Recording permission via the proper CoreGraphics API
-    if (!CGPreflightScreenCaptureAccess()) {
-        CGRequestScreenCaptureAccess();
-    }
-#endif
 #if (defined(Q_OS_MACOS) || defined(Q_OS_WIN))
     // Global shortcuts for MacOS or Windows. Changes in the config file are
     // applied without a restart; only changed key sequences are touched.
@@ -334,7 +329,7 @@ void Flameshot::onHotkeyActivated(const QString& name)
 
 void Flameshot::toggleRecording(CaptureRequest::RecordMode mode)
 {
-    if (!screenRecordingSupported()) {
+    if (!screenRecordingSupported() || !ensureScreenCaptureAccess()) {
         return;
     }
     m_recording->trigger(mode);
@@ -343,7 +338,7 @@ void Flameshot::toggleRecording(CaptureRequest::RecordMode mode)
 void Flameshot::toggleScrollCapture()
 {
     // Uses the same ScreenCaptureKit support as recording
-    if (!screenRecordingSupported()) {
+    if (!screenRecordingSupported() || !ensureScreenCaptureAccess()) {
         return;
     }
     m_scrolling->trigger();
@@ -362,6 +357,10 @@ const int kCountdownHideMs = 150;
 
 CaptureWidget* Flameshot::guiWithTimer(const CaptureRequest& req)
 {
+    // Before the countdown, so no time is wasted on a capture that cannot work
+    if (!ensureScreenCaptureAccess()) {
+        return nullptr;
+    }
     const int seconds = static_cast<int>(
       captureDelayMs(req.delay(), ConfigHandler().captureDelaySec()) / 1000);
     if (seconds <= 0 || req.delay() > 0) {
@@ -397,6 +396,10 @@ CaptureWidget* Flameshot::guiWithTimer(const CaptureRequest& req)
 CaptureWidget* Flameshot::gui(const CaptureRequest& req)
 {
     if (!resolveAnyConfigErrors()) {
+        return nullptr;
+    }
+    if (!ensureScreenCaptureAccess()) {
+        emit captureFailed();
         return nullptr;
     }
 

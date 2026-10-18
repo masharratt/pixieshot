@@ -61,6 +61,7 @@ private:
     void startAuto();
     void stopAuto(const QString& status);
     void scrollAndGrab();
+    void grabAfterSettle();
     void showProgress(bool force);
     void finish();
     void cancel();

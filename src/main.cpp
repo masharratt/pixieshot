@@ -17,6 +17,7 @@
 #include "core/flameshotdaemon.h"
 #include "utils/abstractlogger.h"
 #include "utils/appidentity.h"
+#include "utils/loginitem.h"
 #include "utils/confighandler.h"
 #include "utils/filenamehandler.h"
 #include "utils/pathinfo.h"
@@ -95,7 +96,7 @@ int requestCaptureAndWait(const CaptureRequest& req)
 
 QSharedMemory* guiMutexLock()
 {
-    QString key = "org.flameshot.Flameshot-" APP_VERSION;
+    QString key = AppIdentity::singleInstanceKey() + "-" APP_VERSION;
     auto* shm = new QSharedMemory(key);
 #ifdef Q_OS_UNIX
     // Destroy shared memory if the last instance crashed on Unix
@@ -237,7 +238,7 @@ int main(int argc, char* argv[])
         auto signalDaemon = SignalDaemon();
 #endif
         auto kdsa =
-          KDSingleApplication(QStringLiteral("org.flameshot.Flameshot"));
+          KDSingleApplication(AppIdentity::singleInstanceKey());
 
         if (!kdsa.isPrimaryInstance() &&
             !ConfigHandler().allowMultipleGuiInstances()) {
@@ -248,6 +249,15 @@ int main(int argc, char* argv[])
         configureApp(true, translator, qtTranslator);
         auto c = Flameshot::instance();
         FlameshotDaemon::start();
+
+#ifdef Q_OS_MACOS
+        // Upgrade from the Flameshot build: replace its login item. Only for
+        // users who turned launch at startup on, so nobody else is asked for
+        // System Events access.
+        if (ConfigHandler().value(QStringLiteral("startupLaunch")).toBool()) {
+            loginitem::migrateLegacy(true);
+        }
+#endif
 
 #if defined(USE_KDSINGLEAPPLICATION) &&                                        \
   (defined(Q_OS_MACOS) || defined(Q_OS_WIN))

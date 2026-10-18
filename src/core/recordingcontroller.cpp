@@ -7,6 +7,7 @@
 #include "utils/abstractlogger.h"
 #include "utils/confighandler.h"
 #include "utils/filenamehandler.h"
+#include "utils/outputpath.h"
 #include "widgets/recordingcontrol.h"
 
 #include <QDateTime>
@@ -258,5 +259,9 @@ QString RecordingController::nextOutputPath(const QString& extension)
         dir = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
     }
     QDir().mkpath(dir);
-    return FileNameHandler().properScreenshotPath(dir, extension);
+    // Reserved on disk: the real file only appears when the export finishes,
+    // and a second export asking meanwhile must not get the same name
+    return outputpath::reserve([&]() {
+        return FileNameHandler().properScreenshotPath(dir, extension);
+    });
 }

@@ -281,6 +281,30 @@ private slots:
                  QString());
     }
 
+    void retinaScrollBarIsIgnoredScaledByDpr()
+    {
+        // Bug: the 24 px ignore band was not scaled by the frame's device
+        // pixel ratio, so a 32 px (16 pt) legacy scroll bar on a 2x display
+        // stayed inside the hashed columns and every step was NoMatch.
+        const int w = 400;
+        const int h = 400;
+        const QImage content = noiseImage(w, 1200, 20);
+        ScrollStitcher s;
+        const QList<int> positions{ 0, 60, 120, 180 };
+        quint32 seed = 700;
+        for (int y : positions) {
+            QImage f = rows(content, y, h);
+            const QImage bar = noiseImage(32, h, seed++);
+            for (int r = 0; r < h; ++r) {
+                memcpy(f.scanLine(r) + (w - 32) * 4, bar.constScanLine(r), 128);
+            }
+            f.setDevicePixelRatio(2.0);
+            const Step step = s.add(f);
+            QVERIFY2(step != Step::NoMatch, "scroll bar broke matching");
+        }
+        QCOMPARE(s.height(), 180 + h);
+    }
+
     void maxHeightCapsTheImage()
     {
         const QImage content = noiseImage(kW, 2000, 11);
