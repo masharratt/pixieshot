@@ -2546,7 +2546,14 @@ void CaptureWidget::handleBeautifyRequest()
       index > 0 ? m_undoStack.command(index - 1) : nullptr;
     const bool lastIsBeautify =
       last != nullptr && last->id() == BeautifyEditCommand::kId;
-    switch (beautifyActionFor(m_editMode, lastIsBeautify)) {
+    const bool pendingOnSave =
+      (m_context.request.tasks() & CaptureRequest::BEAUTIFY) != 0;
+    switch (beautifyActionFor(m_editMode, lastIsBeautify, pendingOnSave)) {
+        case BeautifyAction::AlreadyPendingOnSave:
+            // Saving applies it already; a second pass would nest
+            AbstractLogger::info() << tr("Beautify is applied when you save "
+                                         "this capture.");
+            break;
         case BeautifyAction::FinishCapture:
             // Same finish as Accept: the request's own tasks (save, copy,
             // after-capture actions) run on the beautified image

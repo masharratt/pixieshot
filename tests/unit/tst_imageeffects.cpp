@@ -8,6 +8,7 @@
 #include <QElapsedTimer>
 #include <QImage>
 #include <QPainter>
+#include <QThread>
 #include <QTest>
 #include <algorithm>
 #include <cmath>
@@ -593,6 +594,60 @@ private slots:
         QCOMPARE(out.pixelColor(0, 0), fill);
         QCOMPARE(out.pixelColor(layout.bezel.left() - 2, layout.bezel.top() - 2),
                  fill);
+    }
+
+    // Bug: glass bezel looped forever on a shot 4 physical px wide or less
+    // (skipTo < skipFrom on the "straight" rows). Runs on a thread so a
+    // regression fails instead of hanging the suite.
+    void glassOnNarrowShotTerminates()
+    {
+        for (const int w : { 1, 3, 4, 5 }) {
+            EffectSettings s;
+            s.glass = true;
+            s.glassPx = 8;
+            const QImage src = solid(w, 40, Qt::white);
+            QImage out;
+            QThread* t = QThread::create(
+              [&]() { out = imageeffects::applyEffects(src, s); });
+            t->start();
+            const bool finished = t->wait(8000);
+            if (finished) {
+                delete t;
+            } // else: leaked on purpose, a spinning thread cannot be joined
+            QVERIFY2(finished,
+                     qPrintable(QStringLiteral("glass hangs at width %1")
+                                  .arg(w)));
+            QVERIFY(out.width() > w);
+        }
+    }
+
+    // Bug: the "Apply effects" workflow action started adding the Beautify
+    // padding and gradient to every hotkey capture. It must only ever apply
+    // border, corners and shadow, whatever the Beautify defaults are.
+    void workflowActionOnlyAppliesBorderCornersShadow_bugGradientByDefault()
+    {
+        EffectSettings beautifyDefaults; // as ConfigHandler defaults build it
+        beautifyDefaults.cornerRadius = 12;
+        beautifyDefaults.paddingPx = 64;
+        beautifyDefaults.backgroundMode = BackgroundMode::Gradient;
+        beautifyDefaults.aspect = 2;
+        beautifyDefaults.glass = true;
+        beautifyDefaults.grain = 30;
+        beautifyDefaults.autoBalance = true;
+        const EffectSettings basic = imageeffects::basicEffects(beautifyDefaults);
+        QCOMPARE(basic.cornerRadius, 12);
+        QCOMPARE(basic.paddingPx, 0);
+        QVERIFY(basic.backgroundMode == BackgroundMode::None);
+        QCOMPARE(basic.aspect, 0);
+        QVERIFY(!basic.glass);
+        QCOMPARE(basic.grain, 0);
+        QVERIFY(!basic.autoBalance);
+        // Output grows by nothing and is not painted over
+        const QImage src = solid(100, 60, Qt::white);
+        const QImage out = imageeffects::applyEffects(src, basic);
+        QCOMPARE(out.size(), src.size());
+        QCOMPARE(out.pixelColor(50, 30), QColor(Qt::white));
+        QVERIFY(imageeffects::needsAlpha(basic)); // transparent corners
     }
 
     void glassShadowSitsUnderTheBezel()

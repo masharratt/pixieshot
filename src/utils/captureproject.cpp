@@ -24,6 +24,7 @@ namespace {
 
 const auto kDprKey = QStringLiteral("dpr");
 const auto kObjectsKey = QStringLiteral("objects");
+const auto kBeautifiedKey = QStringLiteral("beautified");
 const auto kTypeKey = QStringLiteral("type");
 
 QString tr(const char* text)
@@ -133,12 +134,15 @@ QByteArray encode(const CaptureProject& project)
     QJsonObject header;
     header.insert(kDprKey, project.base.devicePixelRatio());
     header.insert(kObjectsKey, project.objects);
+    header.insert(kBeautifiedKey, project.beautified);
 
     QByteArray png;
     {
         QBuffer buffer(&png);
         buffer.open(QIODevice::WriteOnly);
-        project.base.save(&buffer, "PNG");
+        if (project.base.isNull() || !project.base.save(&buffer, "PNG")) {
+            return {};
+        }
     }
 
     QByteArray bytes;
@@ -203,6 +207,7 @@ bool decode(const QByteArray& bytes, CaptureProject& out, QString* error)
 
     out.base = base;
     out.objects = header.value(kObjectsKey).toArray();
+    out.beautified = header.value(kBeautifiedKey).toBool(false);
     return true;
 }
 
@@ -210,6 +215,12 @@ bool save(const QString& path, const CaptureProject& project, QString* error)
 {
     QSaveFile file(path);
     const QByteArray bytes = encode(project);
+    if (bytes.isEmpty()) {
+        setError(error,
+                 tr("The capture image could not be encoded, so the project "
+                    "was not saved."));
+        return false;
+    }
     if (!file.open(QIODevice::WriteOnly) ||
         file.write(bytes) != bytes.size() || !file.commit()) {
         setError(error,

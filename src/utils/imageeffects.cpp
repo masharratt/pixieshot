@@ -377,6 +377,19 @@ bool backgroundUsesShot(const EffectSettings& settings)
             settings.autoColors);
 }
 
+EffectSettings basicEffects(const EffectSettings& settings)
+{
+    EffectSettings basic;
+    basic.borderPx = settings.borderPx;
+    basic.borderColor = settings.borderColor;
+    basic.cornerRadius = settings.cornerRadius;
+    basic.shadow = settings.shadow;
+    basic.shadowBlur = settings.shadowBlur;
+    basic.shadowOffset = settings.shadowOffset;
+    basic.shadowColor = settings.shadowColor;
+    return basic;
+}
+
 bool needsAlpha(const EffectSettings& settings)
 {
     if (settings.backgroundMode != BackgroundMode::None) {

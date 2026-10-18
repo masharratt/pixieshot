@@ -162,7 +162,10 @@ void drawBezel(QImage& canvas,
 
     for (int y = area.top(); y <= area.bottom(); ++y) {
         QRgb* line = reinterpret_cast<QRgb*>(canvas.scanLine(y));
-        const bool straight = y >= straightTop && y <= straightBottom;
+        // A shot 4px wide or less has no interior to skip (skipTo < skipFrom
+        // would loop forever)
+        const bool straight =
+          y >= straightTop && y <= straightBottom && shot.width() > 4;
         const int skipFrom = straight ? shot.left() + 2 : area.right() + 1;
         const int skipTo = straight ? shot.right() - 2 : area.right();
         for (int x = area.left(); x <= area.right(); ++x) {

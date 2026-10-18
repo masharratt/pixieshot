@@ -23,6 +23,9 @@ struct CaptureProject
     // One JSON object per annotation, bottom first, in logical points
     // relative to the base image's top-left
     QJsonArray objects;
+    // The saved file was Beautified on export while this base is not (the
+    // effect is not part of the base), so editing again must re-apply it
+    bool beautified = false;
 
     bool isEmpty() const { return base.isNull(); }
 };
@@ -54,6 +57,7 @@ QList<CaptureTool*> decodeObjects(const QJsonArray& objects,
                                   QObject* parent,
                                   QStringList* warnings);
 
+// Empty when the base image cannot be encoded as PNG
 QByteArray encode(const CaptureProject& project);
 // On failure `out` is left empty and `error` says why, in words for the user
 bool decode(const QByteArray& bytes, CaptureProject& out, QString* error);

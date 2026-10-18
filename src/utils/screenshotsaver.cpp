@@ -8,6 +8,7 @@
 #include "utils/desktopinfo.h"
 #include "utils/filenamehandler.h"
 #include "utils/globalvalues.h"
+#include "utils/savepath.h"
 
 #include <QByteArray>
 #include <QDebug>
@@ -43,9 +44,11 @@ bool saveToFilesystem(const QPixmap& capture,
                       bool overwrite,
                       const QString& forceExtension)
 {
+    const QString overwriteTarget =
+      overwrite ? savepath::overwriteTarget(path, forceExtension) : QString();
     QString completePath =
-      (overwrite && QFileInfo(path).isFile())
-        ? path
+      !overwriteTarget.isEmpty()
+        ? overwriteTarget
         : FileNameHandler().properScreenshotPath(
             path,
             forceExtension.isEmpty() ? ConfigHandler().saveAsFileExtension()
@@ -89,7 +92,9 @@ bool saveToFilesystem(const QPixmap& capture,
     return okay;
 }
 
-QString ShowSaveFileDialog(const QString& title, const QString& directory)
+QString ShowSaveFileDialog(const QString& title,
+                           const QString& directory,
+                           const QString& forceExtension)
 {
     QFileDialog dialog(nullptr, title, directory);
     dialog.setAcceptMode(QFileDialog::AcceptSave);
@@ -107,7 +112,9 @@ QString ShowSaveFileDialog(const QString& title, const QString& directory)
     }
     dialog.setMimeTypeFilters(mimeTypeList);
 
-    QString suffix = ConfigHandler().saveAsFileExtension();
+    QString suffix = forceExtension.isEmpty()
+                       ? ConfigHandler().saveAsFileExtension()
+                       : forceExtension;
     if (suffix.isEmpty()) {
         suffix = "png";
     }
@@ -280,7 +287,7 @@ bool saveToClipboardGnomeWorkaround(const QPixmap& pixmap, QWidget* keepAlive)
     return true;
 }
 
-bool saveToFilesystemGUI(const QPixmap& capture)
+bool saveToFilesystemGUI(const QPixmap& capture, const QString& forceExtension)
 {
     bool okay = false;
     ConfigHandler config;
@@ -290,8 +297,11 @@ bool saveToFilesystemGUI(const QPixmap& capture)
         defaultSavePath =
           QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
     }
+    // forceExtension: effects with transparency cannot be saved as JPEG
     QString savePath = FileNameHandler().properScreenshotPath(
-      defaultSavePath, ConfigHandler().saveAsFileExtension());
+      defaultSavePath,
+      forceExtension.isEmpty() ? ConfigHandler().saveAsFileExtension()
+                               : forceExtension);
 #if defined(Q_OS_MACOS)
     for (QWidget* widget : qApp->topLevelWidgets()) {
         QString className(widget->metaObject()->className());
@@ -304,7 +314,8 @@ bool saveToFilesystemGUI(const QPixmap& capture)
     }
 #endif
     if (!config.savePathFixed()) {
-        savePath = ShowSaveFileDialog(QObject::tr("Save screenshot"), savePath);
+        savePath = ShowSaveFileDialog(
+          QObject::tr("Save screenshot"), savePath, forceExtension);
     }
     if (savePath == "") {
         return okay;

@@ -483,6 +483,54 @@ private slots:
         QVERIFY(p.objects.isEmpty());
     }
 
+    // Bug: "Edit again" of a capture Beautified from the toolbar button saved
+    // a plain file, because the project did not record that the export was
+    // beautified.
+    void beautifiedFlagSurvivesFileRoundTrip_bugEditAgainDropsBeautify()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        for (const bool flag : { true, false }) {
+            CaptureProject p;
+            p.base = baseCanvas().toImage();
+            p.beautified = flag;
+            const QString path = dir.filePath(flag ? "b.fsproj" : "p.fsproj");
+            QString error;
+            QVERIFY2(captureproject::save(path, p, &error), qPrintable(error));
+            CaptureProject loaded;
+            QVERIFY2(captureproject::load(path, loaded, &error),
+                     qPrintable(error));
+            QCOMPARE(loaded.beautified, flag);
+        }
+    }
+
+    // Projects written before the flag existed load as not beautified
+    void missingBeautifiedKeyMeansFalse()
+    {
+        CaptureProject p;
+        p.base = baseCanvas().toImage();
+        CaptureProject out;
+        QString error;
+        QVERIFY2(captureproject::decode(captureproject::encode(p), out, &error),
+                 qPrintable(error));
+        QVERIFY(!out.beautified);
+    }
+
+    // Bug: a failed PNG encode was ignored, save() reported success and the
+    // history linked a project that could never be opened again.
+    void saveFailsWhenTheBaseCannotBeEncoded_bugEncodeFailureIgnored()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        CaptureProject p; // null base: PNG encode fails
+        QVERIFY(captureproject::encode(p).isEmpty());
+        const QString path = dir.filePath("bad.fsproj");
+        QString error;
+        QVERIFY(!captureproject::save(path, p, &error));
+        QVERIFY2(!error.isEmpty(), "save must say why");
+        QVERIFY2(!QFileInfo::exists(path), "no unreadable file left behind");
+    }
+
     void missingFileFailsWithClearError()
     {
         QTemporaryDir dir;

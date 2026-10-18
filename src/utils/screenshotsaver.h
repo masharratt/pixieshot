@@ -14,9 +14,14 @@ bool saveToFilesystem(const QPixmap& capture,
                       QString* savedPath = nullptr,
                       bool overwrite = false,
                       const QString& forceExtension = QString());
-QString ShowSaveFileDialog(const QString& title, const QString& directory);
+QString ShowSaveFileDialog(const QString& title,
+                           const QString& directory,
+                           const QString& forceExtension = QString());
 void saveToClipboardMime(const QPixmap& capture, const QString& imageType);
 void saveToClipboard(const QPixmap& capture);
 // GNOME Wayland: keeps the widget alive until clipboard data is fetched
 bool saveToClipboardGnomeWorkaround(const QPixmap& pixmap, QWidget* keepAlive);
-bool saveToFilesystemGUI(const QPixmap& capture);
+// forceExtension: default file type instead of the configured one (e.g. "png"
+// for captures with transparency)
+bool saveToFilesystemGUI(const QPixmap& capture,
+                         const QString& forceExtension = QString());

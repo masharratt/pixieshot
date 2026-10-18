@@ -81,6 +81,11 @@ QImage autoBalance(const QImage& src);
 // background + aspect. Identity when everything is off.
 QImage applyEffects(const QImage& src, const EffectSettings& settings);
 
+// Only border, rounded corners and shadow: what the "Apply effects"
+// after-capture action always did. The Beautify extras (padding, background,
+// aspect, glass, grain, auto-balance) are left out.
+EffectSettings basicEffects(const EffectSettings& settings);
+
 // True when the result can contain transparent pixels (a background fills
 // the canvas, so it makes the result opaque)
 bool needsAlpha(const EffectSettings& settings);

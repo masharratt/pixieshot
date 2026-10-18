@@ -34,7 +34,9 @@ public:
     // image, still editable.
     EditorWindow(const QString& path,
                  const QPixmap& image,
-                 const QJsonArray& objects = {});
+                 const QJsonArray& objects = {},
+                 // The file was Beautified on export: save it that way again
+                 bool beautifyOnSave = false);
     ~EditorWindow() override;
 
     // Size and center the window on the screen under the cursor, then show it

@@ -43,7 +43,8 @@ constexpr int kToolbarSpacing = 4;
 
 EditorWindow::EditorWindow(const QString& path,
                            const QPixmap& image,
-                           const QJsonArray& objects)
+                           const QJsonArray& objects,
+                           bool beautifyOnSave)
   : QWidget(nullptr, Qt::Window | Qt::WindowMinMaxButtonsHint)
   , m_image(image)
   , m_path(path)
@@ -57,6 +58,9 @@ EditorWindow::EditorWindow(const QString& path,
     req.setEditImage(image);
     req.addSaveTask(path);
     req.setOverwriteExisting(true);
+    if (beautifyOnSave) {
+        req.addTask(CaptureRequest::BEAUTIFY);
+    }
 
     m_toolbar = new QWidget(this);
     m_toolbar->setObjectName(QStringLiteral("editorToolbar"));

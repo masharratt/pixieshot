@@ -53,6 +53,7 @@ constexpr const char* visibleInDockProperty = "_visibleInDock";
 #include "core/recordingcontroller.h"
 #include "core/scrollcapturecontroller.h"
 #include "platform/screenrecorder.h"
+#include "tools/beautify/beautifyaction.h"
 #include "utils/abstractlogger.h"
 #include "utils/capturehistory.h"
 #include "utils/confighandler.h"
@@ -823,7 +824,12 @@ public:
         if (m_effectsApplied) {
             return pixmap;
         }
-        const EffectSettings settings = ConfigHandler().effectSettings();
+        // Only border, corners and shadow, as before Beautify existed. The
+        // Beautify extras (padding, background, ...) apply through
+        // "Beautify every capture" or the Beautify button, which set
+        // m_effectsApplied.
+        const EffectSettings settings =
+          imageeffects::basicEffects(ConfigHandler().effectSettings());
         m_effectsNeedAlpha = imageeffects::needsAlpha(settings);
         return QPixmap::fromImage(
           imageeffects::applyEffects(pixmap.toImage(), settings));
@@ -888,8 +894,12 @@ void Flameshot::exportCapture(const QPixmap& rawCapture,
     }
     // Beautify replaces the capture for every task below
     QPixmap capture = rawCapture;
-    const bool beautify =
-      (req.tasks() & CR::BEAUTIFY) || ConfigHandler().beautifyAlways();
+    const bool beautify = shouldBeautify((req.tasks() & CR::BEAUTIFY) != 0,
+                                         ConfigHandler().beautifyAlways(),
+                                         !req.editImage().isNull());
+    // The project keeps the un-beautified base, so remember the effect for
+    // "Edit again"
+    m_pendingProject.beautified = beautify;
     bool needsAlpha = false;
     if (beautify) {
         const EffectSettings settings = ConfigHandler().effectSettings();
@@ -924,7 +934,7 @@ void Flameshot::exportCapture(const QPixmap& rawCapture,
 
     if ((tasks & CR::SAVE) && !hasWorkflow) {
         if (req.path().isEmpty()) {
-            saveToFilesystemGUI(capture);
+            saveToFilesystemGUI(capture, pngOverrideForAlpha(needsAlpha));
         } else {
             QString savedPath;
             if (saveToFilesystem(capture,
@@ -1023,7 +1033,8 @@ void Flameshot::editProject(const QString& path, const CaptureProject& project)
 {
     QPixmap image = QPixmap::fromImage(project.base);
     image.setDevicePixelRatio(project.base.devicePixelRatio());
-    openEditorWindow(new EditorWindow(path, image, project.objects));
+    openEditorWindow(
+      new EditorWindow(path, image, project.objects, project.beautified));
 }
 
 void Flameshot::editCaptureAgain(const QString& path, const QPixmap& capture)
