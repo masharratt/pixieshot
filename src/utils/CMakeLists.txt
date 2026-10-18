@@ -28,6 +28,7 @@ target_sources(
           history.cpp
           capturehistory.cpp
           captureproject.cpp
+          stylepack.cpp
           strfparse.cpp
           imageeffects.cpp
           beautifylayout.cpp

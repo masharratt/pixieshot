@@ -232,6 +232,11 @@ public:
     // INFO
     static QSet<QString>& recognizedGeneralOptions();
     static QSet<QString>& recognizedShortcutNames();
+    // For data that names options (style packs): whether `value` passes the
+    // General option's own ValueHandler, and that option's default value.
+    // Unknown keys are never valid and have an invalid default.
+    static bool isValidOptionValue(const QString& key, const QVariant& value);
+    static QVariant optionDefault(const QString& key);
     QSet<QString> keysFromGroup(const QString& group) const;
 
     // ERROR HANDLING

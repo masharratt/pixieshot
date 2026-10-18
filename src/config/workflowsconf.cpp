@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "workflowsconf.h"
+#include "config/stylepackrow.h"
 #include "utils/animatedframe.h"
 #include "utils/beautifypalette.h"
 #include "platform/screenrecorder.h"
@@ -157,6 +158,14 @@ void WorkflowsConf::addEffectsGroup()
     auto* box = new QGroupBox(tr("Effects"), this);
     auto* boxLayout = new QHBoxLayout(box);
     auto* form = new QFormLayout();
+
+    // A pack rewrites the saved settings; reload every control and preview
+    auto* stylePacks = new StylePackRow(box);
+    connect(stylePacks,
+            &StylePackRow::applied,
+            this,
+            &WorkflowsConf::updateComponents);
+    form->addRow(tr("Style pack"), stylePacks);
 
     m_borderPx = new QSpinBox(box);
     m_borderPx->setRange(0, 100);

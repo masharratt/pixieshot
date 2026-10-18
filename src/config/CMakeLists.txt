@@ -15,6 +15,7 @@ target_sources(
           shortcutswidget.cpp
           strftimechooserwidget.cpp
           styleoverride.cpp
+          stylepackrow.cpp
           uicoloreditor.cpp
           visualseditor.cpp
           workflowsconf.cpp

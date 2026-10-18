@@ -1,0 +1,23 @@
+{
+    "format": "pixiestyle",
+    "version": 1,
+    "name": "Album Art",
+    "author": "Pixieshot",
+    "settings": {
+        "animStyle": 2,
+        "effectAspect": 0,
+        "effectAutoBalance": false,
+        "effectAutoColors": false,
+        "effectBackground": 3,
+        "effectBackgroundColor1": "#111827",
+        "effectBackgroundColor2": "#374151",
+        "effectBorderColor": "#000000",
+        "effectBorderPx": 0,
+        "effectCornerRadius": 12,
+        "effectGlass": true,
+        "effectGlassPx": 18,
+        "effectGrain": 15,
+        "effectPadding": 80,
+        "effectShadow": true
+    }
+}

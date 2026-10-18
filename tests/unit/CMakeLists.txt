@@ -130,38 +130,50 @@ if(APPLE)
 endif()
 flameshot_add_unit_test(tst_appidentity SOURCES)
 
-# Toolbar robot: a real left click on every toolbar button of a live
-# CaptureWidget, in the overlay and in the windowed editor. Needs the whole
-# app, so it builds every source of the flameshot target except main.cpp.
-# The test redirects all settings, history and save paths into a temp dir and
-# hosts the daemon in-process, so nothing reaches the user's running app.
+# Tests that need the whole app (real ConfigHandler, widgets, resources) build
+# every source of the flameshot target except main.cpp (.ui forms are found
+# by AUTOUIC from their includes; listing them in two targets clashes). Each such test
+# redirects settings, history and save paths into a temp dir itself.
 get_target_property(_fs_sources flameshot SOURCES)
-set(_robot_sources "")
+set(_app_sources "")
 foreach(src IN LISTS _fs_sources)
   if(NOT IS_ABSOLUTE "${src}")
     set(src "${CMAKE_SOURCE_DIR}/src/${src}")
   endif()
-  if(src MATCHES "/main\\.cpp$" OR src MATCHES "\\.(qm|rc|icns)$")
+  if(src MATCHES "/main\\.cpp$" OR src MATCHES "\\.(qm|rc|icns|ui)$")
     continue()
   endif()
-  list(APPEND _robot_sources "${src}")
+  list(APPEND _app_sources "${src}")
 endforeach()
-add_executable(tst_toolbarrobot tst_toolbarrobot.cpp ${_robot_sources})
-set_target_properties(tst_toolbarrobot PROPERTIES AUTORCC ON AUTOUIC ON)
 get_target_property(_fs_defs flameshot COMPILE_DEFINITIONS)
 get_target_property(_fs_opts flameshot COMPILE_OPTIONS)
 get_target_property(_fs_incs flameshot INCLUDE_DIRECTORIES)
 get_target_property(_fs_libs flameshot LINK_LIBRARIES)
 list(REMOVE_ITEM _fs_libs project_warnings)
-target_compile_definitions(tst_toolbarrobot PRIVATE ${_fs_defs})
-if(USE_KDSINGLEAPPLICATION)
-  # A directory-level definition in src/, so it does not reach this folder
-  target_compile_definitions(tst_toolbarrobot PRIVATE USE_KDSINGLEAPPLICATION=1)
-endif()
-if(_fs_opts)
-  target_compile_options(tst_toolbarrobot PRIVATE ${_fs_opts})
-endif()
-target_include_directories(tst_toolbarrobot PRIVATE ${_fs_incs} "${CMAKE_SOURCE_DIR}/src")
-target_link_libraries(tst_toolbarrobot PRIVATE ${_fs_libs} Qt6::Test)
-add_test(NAME tst_toolbarrobot COMMAND tst_toolbarrobot)
-set_tests_properties(tst_toolbarrobot PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 300)
+
+# flameshot_add_app_test(<name> <timeout seconds>)
+function(flameshot_add_app_test name timeout)
+  add_executable(${name} ${name}.cpp ${_app_sources})
+  set_target_properties(${name} PROPERTIES AUTORCC ON AUTOUIC ON)
+  target_compile_definitions(${name} PRIVATE ${_fs_defs})
+  if(USE_KDSINGLEAPPLICATION)
+    # A directory-level definition in src/, so it does not reach this folder
+    target_compile_definitions(${name} PRIVATE USE_KDSINGLEAPPLICATION=1)
+  endif()
+  if(_fs_opts)
+    target_compile_options(${name} PRIVATE ${_fs_opts})
+  endif()
+  target_include_directories(${name} PRIVATE ${_fs_incs} "${CMAKE_SOURCE_DIR}/src")
+  target_link_libraries(${name} PRIVATE ${_fs_libs} Qt6::Test)
+  add_test(NAME ${name} COMMAND ${name})
+  set_tests_properties(${name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT ${timeout})
+endfunction()
+
+# Toolbar robot: a real left click on every toolbar button of a live
+# CaptureWidget, in the overlay and in the windowed editor. The daemon is
+# hosted in-process, so nothing reaches the user's running app.
+flameshot_add_app_test(tst_toolbarrobot 300)
+
+# Style packs: parse, serialize and apply against the real ConfigHandler and
+# its value checks, with settings in a temp dir
+flameshot_add_app_test(tst_stylepack 120)
