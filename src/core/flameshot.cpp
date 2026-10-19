@@ -35,7 +35,16 @@ void setActivationPolicyAccessory()
     setActivationPolicy(NSApplicationActivationPolicyAccessory);
 }
 
-constexpr const char* visibleInDockProperty = "_visibleInDock";
+constexpr const char* dockHookedProperty = "_dockHooked";
+
+void activateApp()
+{
+    auto sharedApp = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend);
+    auto activate = reinterpret_cast<void (*)(id, SEL, BOOL)>(objc_msgSend);
+    id nsApp = sharedApp(reinterpret_cast<id>(objc_getClass("NSApplication")),
+                         sel_registerName("sharedApplication"));
+    activate(nsApp, sel_registerName("activateIgnoringOtherApps:"), YES);
+}
 
 } // namespace
 
@@ -539,6 +548,7 @@ void Flameshot::launcher()
         m_launcherWindow = new CaptureLauncher();
     }
     m_launcherWindow->show();
+    m_launcherWindow->raise();
 #if defined(Q_OS_MACOS)
     showDockIcon(m_launcherWindow);
 #endif
@@ -559,20 +569,31 @@ void Flameshot::config()
         QScreen* currentScreen = QGuiAppCurrentScreen().currentScreen();
         position.moveCenter(currentScreen->availableGeometry().center());
         m_configWindow->move(position.topLeft());
-#if defined(Q_OS_MACOS)
-        showDockIcon(m_configWindow);
-#endif
+    } else {
+        // Already open: bring it back (it may be minimized or behind others)
+        if (m_configWindow->isMinimized()) {
+            m_configWindow->showNormal();
+        }
+        m_configWindow->show();
+        m_configWindow->raise();
+        m_configWindow->activateWindow();
     }
+#if defined(Q_OS_MACOS)
+    showDockIcon(m_configWindow);
+#endif
 }
 
 void Flameshot::info()
 {
     if (m_infoWindow == nullptr) {
         m_infoWindow = new InfoWindow();
-#if defined(Q_OS_MACOS)
-        showDockIcon(m_infoWindow);
-#endif
+    } else {
+        m_infoWindow->raise();
+        m_infoWindow->activateWindow();
     }
+#if defined(Q_OS_MACOS)
+    showDockIcon(m_infoWindow);
+#endif
 }
 
 #ifdef ENABLE_IMGUR
@@ -602,40 +623,62 @@ void Flameshot::history()
 #endif
 
 #if defined(Q_OS_MACOS)
+void Flameshot::applyDockVisibility(QWindow* qw, bool visible)
+{
+    if (!m_dockTracker.setVisible(qw, visible)) {
+        return;
+    }
+    if (visible) {
+        setActivationPolicyRegular();
+    } else if (!m_dockTracker.any() && !m_editorDockIcon) {
+        setActivationPolicyAccessory();
+    }
+}
+
 void Flameshot::onWindowVisibilityChanged(QWindow::Visibility newVisibility)
 {
     auto* qw = qobject_cast<QWindow*>(sender());
     if (!qw) {
         return;
     }
-
-    if (newVisibility == QWindow::Hidden) {
-        qw->setProperty(visibleInDockProperty, false);
-        --m_dockIconVisibleCount;
-        if (m_dockIconVisibleCount == 0 && !m_editorDockIcon) {
-            setActivationPolicyAccessory();
-        }
-    } else {
-        bool windowTrackedInDock = qw->property(visibleInDockProperty).toBool();
-        if (!windowTrackedInDock) {
-            qw->setProperty(visibleInDockProperty, true);
-            ++m_dockIconVisibleCount;
-            setActivationPolicyRegular();
-        }
-    }
+    applyDockVisibility(qw, newVisibility != QWindow::Hidden);
 }
 
 void Flameshot::showDockIcon(QWidget* w)
 {
+    // Callers show() the window first, so make sure it has a native window
+    // even if it does not yet.
     QWindow* qw = w->windowHandle();
+    if (!qw) {
+        w->createWinId();
+        qw = w->windowHandle();
+    }
     if (!qw) {
         return;
     }
 
-    connect(qw,
-            &QWindow::visibilityChanged,
-            this,
-            &Flameshot::onWindowVisibilityChanged);
+    // Connect once per window: opening the same window again must not stack
+    // up handlers (each one would count it again).
+    if (!qw->property(dockHookedProperty).toBool()) {
+        qw->setProperty(dockHookedProperty, true);
+        connect(qw,
+                &QWindow::visibilityChanged,
+                this,
+                &Flameshot::onWindowVisibilityChanged);
+        connect(qw, &QObject::destroyed, this, [this, qw]() {
+            applyDockVisibility(qw, false);
+        });
+    }
+
+    // The window is usually already visible here, so its first "visible"
+    // event has come and gone. Register the current state right away, or the
+    // app stays a background app and the window is missing from Cmd+Tab.
+    applyDockVisibility(qw, qw->isVisible());
+
+    // Bring the window to the front of every other app.
+    w->raise();
+    w->activateWindow();
+    activateApp();
 }
 #endif
 
@@ -1133,7 +1176,7 @@ void Flameshot::updateEditorDockIcon()
     m_editorDockIcon = want;
     if (want) {
         setActivationPolicyRegular();
-    } else if (m_dockIconVisibleCount == 0) {
+    } else if (!m_dockTracker.any()) {
         setActivationPolicyAccessory();
     }
 #endif

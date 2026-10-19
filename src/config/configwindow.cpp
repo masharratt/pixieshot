@@ -12,6 +12,7 @@
 #include "utils/confighandler.h"
 #include "utils/globalvalues.h"
 #include "utils/pathinfo.h"
+#include "core/qguiappcurrentscreen.h"
 
 #include <QApplication>
 #include <QDialogButtonBox>
@@ -19,6 +20,8 @@
 #include <QIcon>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QScreen>
+#include <QScrollArea>
 #include <QSizePolicy>
 #include <QTabBar>
 #include <QTextStream>
@@ -60,8 +63,7 @@ ConfigWindow::ConfigWindow(QWidget* parent)
     auto* generalConfigLayout = new QVBoxLayout(m_generalConfigTab);
     m_generalConfigTab->setLayout(generalConfigLayout);
     generalConfigLayout->addWidget(m_generalConfig);
-    m_tabWidget->addTab(
-      m_generalConfigTab, QIcon(modifier + "config.svg"), tr("General"));
+    m_tabWidget->addTab(scrollPage(m_generalConfigTab), QIcon(modifier + "config.svg"), tr("General"));
 
     // visuals
     m_visuals = new VisualsEditor();
@@ -69,8 +71,7 @@ ConfigWindow::ConfigWindow(QWidget* parent)
     auto* visualsLayout = new QVBoxLayout(m_visualsTab);
     m_visualsTab->setLayout(visualsLayout);
     visualsLayout->addWidget(m_visuals);
-    m_tabWidget->addTab(
-      m_visualsTab, QIcon(modifier + "graphics.svg"), tr("Interface"));
+    m_tabWidget->addTab(scrollPage(m_visualsTab), QIcon(modifier + "graphics.svg"), tr("Interface"));
 
     // filename
     m_filenameEditor = new FileNameEditor();
@@ -78,7 +79,7 @@ ConfigWindow::ConfigWindow(QWidget* parent)
     auto* filenameEditorLayout = new QVBoxLayout(m_filenameEditorTab);
     m_filenameEditorTab->setLayout(filenameEditorLayout);
     filenameEditorLayout->addWidget(m_filenameEditor);
-    m_tabWidget->addTab(m_filenameEditorTab,
+    m_tabWidget->addTab(scrollPage(m_filenameEditorTab),
                         QIcon(modifier + "name_edition.svg"),
                         tr("Filename Editor"));
 
@@ -88,8 +89,7 @@ ConfigWindow::ConfigWindow(QWidget* parent)
     auto* shortcutsLayout = new QVBoxLayout(m_shortcutsTab);
     m_shortcutsTab->setLayout(shortcutsLayout);
     shortcutsLayout->addWidget(m_shortcuts);
-    m_tabWidget->addTab(
-      m_shortcutsTab, QIcon(modifier + "shortcut.svg"), tr("Shortcuts"));
+    m_tabWidget->addTab(scrollPage(m_shortcutsTab), QIcon(modifier + "shortcut.svg"), tr("Shortcuts"));
 
     // workflows
     m_workflows = new WorkflowsConf();
@@ -97,8 +97,7 @@ ConfigWindow::ConfigWindow(QWidget* parent)
     auto* workflowsLayout = new QVBoxLayout(m_workflowsTab);
     m_workflowsTab->setLayout(workflowsLayout);
     workflowsLayout->addWidget(m_workflows);
-    m_tabWidget->addTab(
-      m_workflowsTab, QIcon(modifier + "config.svg"), tr("Workflows"));
+    m_tabWidget->addTab(scrollPage(m_workflowsTab), QIcon(modifier + "config.svg"), tr("Workflows"));
 
     // connect update sigslots
     connect(this,
@@ -118,12 +117,47 @@ ConfigWindow::ConfigWindow(QWidget* parent)
             m_workflows,
             &WorkflowsConf::updateComponents);
 
+    // Fit the visible area (menu bar and Dock excluded), leaving room for
+    // the title bar
+    if (QScreen* screen = QGuiAppCurrentScreen().currentScreen()) {
+        fitToAvailableHeight(screen->availableGeometry().height() - 60);
+    }
+
     // Error indicator (this must come last)
     initErrorIndicator(m_visualsTab, m_visuals);
     initErrorIndicator(m_filenameEditorTab, m_filenameEditor);
     initErrorIndicator(m_generalConfigTab, m_generalConfig);
     initErrorIndicator(m_shortcutsTab, m_shortcuts);
     initErrorIndicator(m_workflowsTab, m_workflows);
+}
+
+// Wraps a tab page so it scrolls vertically when the window is too short.
+QScrollArea* ConfigWindow::scrollPage(QWidget* page)
+{
+    auto* area = new QScrollArea(m_tabWidget);
+    area->setWidgetResizable(true);
+    area->setFrameShape(QFrame::NoFrame);
+    area->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    area->setWidget(page);
+    return area;
+}
+
+void ConfigWindow::fitToAvailableHeight(int availableHeight)
+{
+    // A scroll area reports a small size hint, so size from the pages
+    int pageW = 0, pageH = 0;
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto* area = qobject_cast<QScrollArea*>(m_tabWidget->widget(i));
+        QWidget* page = area ? area->widget() : nullptr;
+        if (page) {
+            pageW = qMax(pageW, page->sizeHint().width());
+            pageH = qMax(pageH, page->sizeHint().height());
+        }
+    }
+    const int chrome = m_tabWidget->tabBar()->sizeHint().height() + 50;
+    const int wantedH = qMax(sizeHint().height(), pageH + chrome);
+    const int wantedW = qMax(sizeHint().width(), pageW + 40);
+    resize(wantedW, qMin(wantedH, availableHeight));
 }
 
 void ConfigWindow::keyPressEvent(QKeyEvent* e)

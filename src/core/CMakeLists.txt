@@ -21,6 +21,8 @@ target_sources(flameshot PRIVATE
     actionlist.cpp
     actionrunner.cpp
     capturedelay.cpp
+    dockwindowtracker.cpp
+    dockwindowtracker.h
     capturefirstrequest.cpp
     capturerequest.cpp
     gifplan.cpp

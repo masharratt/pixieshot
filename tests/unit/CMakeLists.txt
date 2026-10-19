@@ -26,6 +26,7 @@ flameshot_add_unit_test(tst_toaststack SOURCES widgets/toaststack.cpp)
 flameshot_add_unit_test(tst_windowpick SOURCES platform/windowpick.cpp)
 flameshot_add_unit_test(tst_capturehistory SOURCES utils/capturehistory.cpp)
 flameshot_add_unit_test(tst_actionlist SOURCES core/actionlist.cpp)
+flameshot_add_unit_test(tst_dockwindowtracker SOURCES core/dockwindowtracker.cpp)
 flameshot_add_unit_test(tst_actionrunner SOURCES core/actionrunner.cpp core/actionlist.cpp)
 flameshot_add_unit_test(tst_hotkeys SOURCES core/hotkeyutils.cpp)
 flameshot_add_unit_test(tst_imageeffects SOURCES utils/imageeffects.cpp utils/beautifylayout.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp utils/autocolors.cpp utils/glassframe.cpp)
@@ -199,3 +200,6 @@ flameshot_add_app_test(tst_toolbarrobot 300)
 # Style packs: parse, serialize and apply against the real ConfigHandler and
 # its value checks, with settings in a temp dir
 flameshot_add_app_test(tst_stylepack 120)
+
+# Settings window: tall tabs scroll and the window fits a short screen
+flameshot_add_app_test(tst_configwindow 120)
