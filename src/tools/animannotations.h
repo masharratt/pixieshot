@@ -16,6 +16,7 @@ struct PreparedAnimSource
 {
     QImage base; // devicePixelRatio set; static objects painted in
     std::shared_ptr<AnnotationLayer> annotations; // null without objects
+    QVariantMap effectOverlay; // AnimSource::effectOverlay, passed through
 };
 
 namespace animannotations {

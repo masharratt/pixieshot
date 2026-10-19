@@ -4,6 +4,7 @@
 #pragma once
 
 #include "capturetoolobjects.h"
+#include <QImage>
 #include <QPixmap>
 #include <QRect>
 #include <QSize>
@@ -80,9 +81,15 @@ public:
     BeautifyEditCommand(CaptureWidget* captureWidget,
                         const EditCanvasState& before,
                         const EditCanvasState& after,
-                        const QRect& shotSource);
+                        const QRect& shotSource,
+                        const QImage& flat);
 
     const EditCanvasState& before() const { return m_before; }
+    const EditCanvasState& after() const { return m_after; }
+    // The flattened image the effects were applied to
+    const QImage& flat() const { return m_flat; }
+    // A new look for the same layout (a background colour change)
+    void setAfterCanvas(const QPixmap& canvas) { m_after.canvas = canvas; }
     const QRect& shotSource() const { return m_shotSource; }
 
     int id() const override { return kId; }
@@ -94,4 +101,5 @@ private:
     EditCanvasState m_before;
     EditCanvasState m_after;
     QRect m_shotSource;
+    QImage m_flat;
 };

@@ -58,6 +58,16 @@ CaptureProject CaptureRequest::project() const
     return m_project;
 }
 
+QVariantMap CaptureRequest::effectOverlay() const
+{
+    return m_effectOverlay;
+}
+
+void CaptureRequest::setEffectOverlay(const QVariantMap& overlay)
+{
+    m_effectOverlay = overlay;
+}
+
 void CaptureRequest::setProject(const CaptureProject& project)
 {
     m_project = project;

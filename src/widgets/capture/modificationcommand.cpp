@@ -45,11 +45,13 @@ void ExpandCanvasCommand::redo()
 BeautifyEditCommand::BeautifyEditCommand(CaptureWidget* captureWidget,
                                          const EditCanvasState& before,
                                          const EditCanvasState& after,
-                                         const QRect& shotSource)
+                                         const QRect& shotSource,
+                                         const QImage& flat)
   : m_captureWidget(captureWidget)
   , m_before(before)
   , m_after(after)
   , m_shotSource(shotSource)
+  , m_flat(flat)
 {
     setText(QObject::tr("Beautify"));
 }

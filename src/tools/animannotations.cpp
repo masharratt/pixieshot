@@ -63,6 +63,7 @@ PreparedAnimSource prepare(const AnimSource& source)
     PreparedAnimSource out;
     out.base = source.base;
     out.base.setDevicePixelRatio(source.dpr > 0 ? source.dpr : 1.0);
+    out.effectOverlay = source.effectOverlay;
     if (!source.hasAnnotations() || out.base.isNull()) {
         return out;
     }

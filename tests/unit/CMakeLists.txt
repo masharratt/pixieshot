@@ -33,6 +33,7 @@ flameshot_add_unit_test(tst_imageeffects SOURCES utils/imageeffects.cpp utils/be
 flameshot_add_unit_test(tst_glassframe SOURCES utils/glassframe.cpp utils/imageeffects.cpp utils/beautifylayout.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp utils/autocolors.cpp)
 flameshot_add_unit_test(tst_beautifylayout SOURCES utils/beautifylayout.cpp utils/imageeffects.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp utils/autocolors.cpp utils/glassframe.cpp)
 flameshot_add_unit_test(tst_easing SOURCES utils/easing.cpp)
+flameshot_add_unit_test(tst_backgroundchoice SOURCES utils/backgroundchoice.cpp utils/beautifypalette.cpp)
 flameshot_add_unit_test(tst_gifquant SOURCES utils/gifquant.cpp)
 flameshot_add_unit_test(tst_recordingstate SOURCES core/recordingstate.cpp)
 flameshot_add_unit_test(tst_recordingedit SOURCES core/recordingedit.cpp)
@@ -209,3 +210,7 @@ flameshot_add_app_test(tst_stylepack 120)
 
 # Settings window: tall tabs scroll and the window fits a short screen
 flameshot_add_app_test(tst_configwindow 120)
+
+# Beautify background picker in the windowed editor: live re-apply as one
+# undo step, config untouched, Save and Animate use the same colours
+flameshot_add_app_test(tst_editorbackground 120)

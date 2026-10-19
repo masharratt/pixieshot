@@ -975,7 +975,9 @@ void Flameshot::exportCapture(const QPixmap& rawCapture,
     m_pendingProject.beautified = beautify;
     bool needsAlpha = false;
     if (beautify) {
-        const EffectSettings settings = ConfigHandler().effectSettings();
+        // The editor's background choice, if any, over the saved look
+        const EffectSettings settings =
+          ConfigHandler().effectSettings(req.effectOverlay());
         needsAlpha = imageeffects::needsAlpha(settings);
         capture = QPixmap::fromImage(
           imageeffects::applyEffects(rawCapture.toImage(), settings));
@@ -1086,6 +1088,7 @@ void Flameshot::exportCapture(const QPixmap& rawCapture,
             source.base = rawCapture.toImage();
         }
         source.dpr = source.base.devicePixelRatio();
+        source.effectOverlay = req.effectOverlay();
         AnimExportJob::start(source, animateNextTo);
     }
 #endif

@@ -318,6 +318,16 @@ void EditorWindow::addSettingsBar()
             &CaptureWidget::toolSizeChanged,
             m_settingsBar,
             &EditorSettingsBar::setSize);
+    // Beautify background for this editor only
+    m_settingsBar->setBackground(m_capture->editorBackground());
+    connect(m_settingsBar,
+            &EditorSettingsBar::backgroundPicked,
+            m_capture,
+            &CaptureWidget::setEditorBackground);
+    connect(m_capture,
+            &CaptureWidget::editorBackgroundChanged,
+            m_settingsBar,
+            &EditorSettingsBar::setBackground);
     m_settingsBar->show();
 }
 

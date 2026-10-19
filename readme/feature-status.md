@@ -1,6 +1,6 @@
 # Feature Status (masharratt/flameshot fork)
 
-**Last Updated:** 2026-10-19 (Settings window scrolls and shows in Cmd+Tab)
+**Last Updated:** 2026-10-19 (Editor background picker for Beautify)
 
 | Token | Meaning |
 |-------|---------|
@@ -40,6 +40,7 @@ Plan: `planning/PLAN_sharex_fork.md` (local, not committed).
 | Recording editor | dev | Edit on a recording toast opens a window with preview, play/pause, trim handles and a Beautify checkbox (saved effect settings). Export writes a new MP4, or GIF for GIF recordings; trim alone copies frames, Beautify re-encodes onto the still's canvas. | GIF / MP4 recording, Beautify | Not yet checked by hand. Needs the toast (captureToastSeconds > 0). No background shows black. Odd canvas sizes grow 1 px. |
 | Expand canvas | beta | Editor toolbar button that adds 40 pt of white space on every side so you can draw outside the image; drawings move with the image and Cmd+Z undoes it. | Windowed editor | Window grows but does not shrink on undo. Shortcut E. |
 | Editor settings bar | beta | Second toolbar row in the windowed editor with colour swatches from the user palette, a custom colour button and a size slider, kept in sync with all other ways of changing them. | Windowed editor | Every size change is saved as the new default. |
+| Editor background picker | dev | Background controls in the editor settings bar: type, its colours and quick palette presets, starting from the saved settings. Changes re-style Beautify live in the same undo step; Save, Copy and Animate in that editor use them. Config untouched. | Editor settings bar, Beautify | Not yet checked by hand. After Expand canvas the screen keeps the old colours until undone. |
 | Bendable arrows and lines | beta | Arrows and lines show a midpoint handle; dragging it bends them into a smooth curve with the arrowhead following the tangent. Undoable. | Tool system | None known. |
 | Editor select tool | beta | Pointer button (V) in the editor toolbar that turns drawing off so existing objects can be selected, moved, bent or re-edited. | Windowed editor | None known. |
 | Editor Cmd+Tab | beta | Edit windows stay on screen behind other apps like document windows; a Dock icon (and Cmd+Tab entry) appears only while editors are open and the app is in the background. Tray "Show Edit Windows" brings them forward. Clicking the toast picture opens Edit. | Windowed editor | Not yet checked by hand after the 2026-10-18 change. |

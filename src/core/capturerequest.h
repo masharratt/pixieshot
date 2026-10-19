@@ -8,6 +8,7 @@
 #include <QPixmap>
 #include <QString>
 #include <QVariant>
+#include <QVariantMap>
 
 class CaptureRequest
 {
@@ -62,6 +63,9 @@ public:
     bool overwriteExisting() const;
     // Re-editable project of a finished annotated capture (empty otherwise)
     CaptureProject project() const;
+    // Effect options that replace the saved ones when this request is
+    // beautified (see ConfigHandler::effectSettings); empty uses the config
+    QVariantMap effectOverlay() const;
     bool captureFirst() const;
     QRect capturedGlobalRect() const;
     // Name of the hotkey that started this request ("" for CLI and editor).
@@ -78,6 +82,7 @@ public:
     // Open the windowed editor on this image instead of grabbing the screen.
     void setEditImage(const QPixmap& image);
     void setProject(const CaptureProject& project);
+    void setEffectOverlay(const QVariantMap& overlay);
     // Save to the exact path given, replacing the file instead of numbering.
     void setOverwriteExisting(bool overwrite);
     // Marks a request made by the capture-first hotkey or tray path.
@@ -101,6 +106,7 @@ private:
     QRect m_pinWindowGeometry, m_initialSelection;
     QPixmap m_editImage;
     CaptureProject m_project;
+    QVariantMap m_effectOverlay;
     bool m_overwriteExisting = false;
     bool m_captureFirst = false;
     QRect m_capturedGlobalRect;

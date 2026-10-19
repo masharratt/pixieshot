@@ -62,6 +62,8 @@
 #define MOUSE_DISTANCE_TO_START_MOVING 3
 
 auto const MOUSE_WHEEL_TRESHOLD = 60;
+// Windowed editor: the margin around the image
+const QColor kEditCanvasFill(0x2b, 0x2b, 0x2b);
 
 // CaptureWidget is the main component used to capture the screen. It contains
 // an area of selection with its respective buttons.
@@ -2447,7 +2449,7 @@ void CaptureWidget::initEditCanvas(const QPixmap& image)
     source.setDevicePixelRatio(1.0);
     QPixmap canvas(qRound(plan.canvasLogical.width() * dpr),
                    qRound(plan.canvasLogical.height() * dpr));
-    canvas.fill(QColor(0x2b, 0x2b, 0x2b));
+    canvas.fill(kEditCanvasFill);
     {
         QPainter painter(&canvas);
         painter.drawPixmap(QPoint(marginDevice, marginDevice), source);
@@ -2529,7 +2531,7 @@ void CaptureWidget::applyCanvasExpansion(int stepLogical)
     QPixmap source = m_context.origScreenshot;
     source.setDevicePixelRatio(1.0);
     QPixmap canvas(e.newCanvasPx);
-    canvas.fill(QColor(0x2b, 0x2b, 0x2b));
+    canvas.fill(kEditCanvasFill);
     {
         QPainter painter(&canvas);
         painter.setClipRect(e.newSelectionDevice);
@@ -2610,6 +2612,7 @@ void CaptureWidget::handleAnimateRequest()
         source.base = project.base;
         source.objects = project.objects;
         source.dpr = project.base.devicePixelRatio();
+        source.effectOverlay = m_context.request.effectOverlay();
     }
     const AnimChoice initial =
       animChoiceFrom(m_animSettings, AnimExportJob::configuredChoice());
@@ -2684,15 +2687,22 @@ AnimSource CaptureWidget::editAnimSource()
         }
         beautifyIsNewest = beautify != nullptr && cmd == beautify;
     }
+    AnimSource source;
     switch (animateBaseFor(beautify != nullptr, beautifyIsNewest, canvasChangedSince)) {
         case AnimateBase::BeforeBeautify:
-            return animSourceOf(beautify->before(), QRect());
+            source = animSourceOf(beautify->before(), QRect());
+            break;
         case AnimateBase::BeautifiedShot:
-            return animSourceOf(currentEditCanvasState(), beautify->shotSource());
+            source =
+              animSourceOf(currentEditCanvasState(), beautify->shotSource());
+            break;
         case AnimateBase::CurrentImage:
+            source = animSourceOf(currentEditCanvasState(), QRect());
             break;
     }
-    return animSourceOf(currentEditCanvasState(), QRect());
+    // The preview and the export apply this editor's background choice
+    source.effectOverlay = m_context.request.effectOverlay();
+    return source;
 }
 
 AnimSource CaptureWidget::animSourceOf(const EditCanvasState& state,
@@ -2740,7 +2750,9 @@ void CaptureWidget::beautifyEditImage()
     const qreal dpr = m_context.origScreenshot.devicePixelRatio();
     QImage flat = m_context.screenshot.copy(m_editImageRectDevice).toImage();
     flat.setDevicePixelRatio(dpr);
-    const EffectSettings settings = ConfigHandler().effectSettings();
+    // The saved look with this editor's background choice
+    const EffectSettings settings =
+      ConfigHandler().effectSettings(m_context.request.effectOverlay());
     QImage beautified = imageeffects::applyEffects(flat, settings);
     beautified.setDevicePixelRatio(dpr);
     // Where the plain pixels land, so Animate can take them back out
@@ -2754,7 +2766,97 @@ void CaptureWidget::beautifyEditImage()
     m_captureToolObjects.clear();
     const EditCanvasState after = currentEditCanvasState();
     // push() runs redo(), which applies `after`
-    m_undoStack.push(new BeautifyEditCommand(this, before, after, shotSource));
+    m_undoStack.push(
+      new BeautifyEditCommand(this, before, after, shotSource, flat));
+}
+
+BackgroundChoice CaptureWidget::editorBackground() const
+{
+    if (m_editorBackground) {
+        return *m_editorBackground;
+    }
+    return backgroundchoice::fromSettings(ConfigHandler().effectSettings());
+}
+
+void CaptureWidget::setEditorBackground(const BackgroundChoice& choice)
+{
+    if (!m_editMode || choice == editorBackground()) {
+        return;
+    }
+    m_editorBackground = choice;
+    // Beautify here, Save / Copy (exportCapture) and Animate all read it
+    m_context.request.setEffectOverlay(backgroundchoice::overlayOf(choice));
+    restyleBeautifySteps();
+    emit editorBackgroundChanged(choice);
+}
+
+QImage CaptureWidget::currentEditImage() const
+{
+    QImage image =
+      m_context.origScreenshot.copy(m_editImageRectDevice).toImage();
+    image.setDevicePixelRatio(m_context.origScreenshot.devicePixelRatio());
+    return image;
+}
+
+// A colour change keeps the layout, so each Beautify step only gets new
+// pixels for the same canvas; no step is added. The one on screen is
+// swapped in under the current annotations.
+void CaptureWidget::restyleBeautifySteps()
+{
+    const EffectSettings settings =
+      ConfigHandler().effectSettings(m_context.request.effectOverlay());
+    BeautifyEditCommand* shown = nullptr;
+    bool canvasChangedSince = false;
+    for (int i = 0; i < m_undoStack.count(); ++i) {
+        // QUndoStack hands out const commands; the stack owns them
+        auto* cmd = const_cast<QUndoCommand*>(m_undoStack.command(i));
+        const bool applied = i < m_undoStack.index();
+        if (cmd->id() == BeautifyEditCommand::kId) {
+            auto* beautify = static_cast<BeautifyEditCommand*>(cmd);
+            const EditCanvasState& after = beautify->after();
+            QImage image = imageeffects::applyEffects(beautify->flat(), settings);
+            if (image.size() != after.imageDevice.size()) {
+                // Not expected: the background never changes the layout
+                AbstractLogger::warning()
+                  << tr("Could not change the background of this Beautify "
+                        "step.");
+                continue;
+            }
+            QPixmap canvas = after.canvas;
+            const qreal dpr = canvas.devicePixelRatio();
+            canvas.setDevicePixelRatio(1.0);
+            {
+                QPainter painter(&canvas);
+                painter.fillRect(after.imageDevice, kEditCanvasFill);
+                image.setDevicePixelRatio(1.0);
+                painter.drawImage(after.imageDevice.topLeft(), image);
+            }
+            canvas.setDevicePixelRatio(dpr);
+            beautify->setAfterCanvas(canvas);
+            if (applied) {
+                shown = beautify;
+                canvasChangedSince = false;
+            }
+        } else if (applied && shown != nullptr &&
+                   dynamic_cast<const ExpandCanvasCommand*>(cmd) != nullptr) {
+            canvasChangedSince = true;
+        }
+    }
+    if (shown == nullptr) {
+        return;
+    }
+    if (canvasChangedSince) {
+        // cfn: the expanded canvas keeps the old background on screen;
+        // re-expand from the new pixels if people change colours after
+        // expanding
+        AbstractLogger::info()
+          << tr("Undo the canvas expansion to see the new background.");
+        return;
+    }
+    m_context.origScreenshot = shown->after().canvas;
+    m_context.screenshot = shown->after().canvas;
+    drawToolsData();
+    update();
 }
 
 EditCanvasState CaptureWidget::currentEditCanvasState()

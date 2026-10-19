@@ -15,6 +15,7 @@
 #include "tools/capturetool.h"
 #include "utils/animrender.h"
 #include "utils/annotationlayer.h"
+#include "utils/backgroundchoice.h"
 #include "utils/captureproject.h"
 #include "utils/confighandler.h"
 #include "platform/windowlist.h"
@@ -28,6 +29,7 @@
 
 #include <QMessageBox>
 #include <QPointer>
+#include <optional>
 #include <QTimer>
 #include <QUndoStack>
 #include <QWidget>
@@ -83,6 +85,8 @@ signals:
     void toolSizeChanged(int size);
     // Windowed editor: the canvas grew or shrank (logical size)
     void editCanvasResized(const QSize& canvasLogical);
+    // Windowed editor: the Beautify background choice changed
+    void editorBackgroundChanged(const BackgroundChoice& choice);
 
 private slots:
     void undo();
@@ -132,6 +136,21 @@ public:
     // Settings of the "Animate" output this capture was reopened from; the
     // Animate preview starts from them instead of the saved choice
     void setAnimSettings(const QJsonObject& settings);
+
+    // Beautify button, overlay or editor (see beautifyActionFor)
+    void handleBeautifyRequest();
+    // What Animate starts from in the windowed editor now
+    AnimSource editAnimSource();
+    // Windowed editor: the Beautify background this session uses (the saved
+    // one until changed). Changing it re-styles an applied Beautify in
+    // place, keeps one undo step, and is used by Save, Copy and Animate in
+    // this editor. The config is never written.
+    BackgroundChoice editorBackground() const;
+    void setEditorBackground(const BackgroundChoice& choice);
+    // Windowed editor: the image as it is now, without the canvas margin
+    QImage currentEditImage() const;
+    // The edit history (the host window and tests read it)
+    QUndoStack& undoStack() { return m_undoStack; }
 
     // Windowed editor: add white space on every edge, undoable. Does nothing
     // outside edit mode.
@@ -202,14 +221,12 @@ private:
     // Windowed editor Beautify: flattens the annotations into the image and
     // replaces it with the beautified result, as one undoable step
     void beautifyEditImage();
+    // Every Beautify step re-drawn with the current background choice
+    void restyleBeautifySteps();
     EditCanvasState currentEditCanvasState();
-    // Beautify button, overlay or editor (see beautifyActionFor)
-    void handleBeautifyRequest();
     // Animate button: opens the preview; its Export finishes and exports
     // (overlay) or exports in place (windowed editor)
     void handleAnimateRequest();
-    // What Animate starts from in the windowed editor now
-    AnimSource editAnimSource();
     // The preview's Export: keeps the choice, then exports `source`
     void exportAnimation(const AnimSource& source, const AnimChoice& choice);
     // What Animate starts from in an editor state: the image without its
@@ -339,5 +356,8 @@ private:
     QRect m_editImageRectLogical;
     // Animate settings of the output this was reopened from (empty: none)
     QJsonObject m_animSettings;
+    // Windowed editor background choice; unset uses the saved one. Its
+    // overlay lives on m_context.request (see setEditorBackground).
+    std::optional<BackgroundChoice> m_editorBackground;
     QRect m_editImageRectDevice;
 };

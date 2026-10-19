@@ -10,6 +10,7 @@
 #include <QImage>
 #include <QJsonArray>
 #include <QRectF>
+#include <QVariantMap>
 
 class QPainter;
 
@@ -20,6 +21,9 @@ struct AnimSource
     QJsonArray objects; // captureproject JSON, bottom first, logical points
                         // relative to the base's top-left
     qreal dpr = 1.0;
+    // Effect options that replace the saved ones for this source (see
+    // ConfigHandler::effectSettings), e.g. the editor's background choice
+    QVariantMap effectOverlay;
 
     bool hasAnnotations() const { return !objects.isEmpty(); }
 };

@@ -43,6 +43,7 @@ target_sources(
           shotmotion.cpp
           animtimeline.cpp
           beautifypalette.cpp
+          backgroundchoice.cpp
           gifquant.cpp
           scrollstitch.cpp
           loginitem.cpp

@@ -76,7 +76,7 @@ AnimRenderParams AnimExportJob::paramsFor(const PreparedAnimSource& prepared,
     params.shot = prepared.base;
     params.annotations = prepared.annotations;
     params.annotationMode = animannotations::modeFrom(config.animAnnotations());
-    params.effects = config.effectSettings();
+    params.effects = config.effectSettings(prepared.effectOverlay);
     params.style = animatedbg::styleFrom(choice.style);
     params.motion = shotmotion::motionFrom(choice.motion);
     params.durationSec = config.animDurationSec();
@@ -199,8 +199,13 @@ QString AnimExportJob::storeProject() const
     project.base.setDevicePixelRatio(m_source.dpr);
     project.objects = m_source.objects;
     // Every Animate and Beautify setting this export used
-    project.anim = QJsonObject::fromVariantMap(
-      stylepack::fromCurrentConfig(QString()).settings);
+    QVariantMap used = stylepack::fromCurrentConfig(QString()).settings;
+    for (auto it = m_source.effectOverlay.cbegin();
+         it != m_source.effectOverlay.cend();
+         ++it) {
+        used.insert(it.key(), it.value());
+    }
+    project.anim = QJsonObject::fromVariantMap(used);
     writeAnimChoice(project.anim, m_choice);
     // cfn: synchronous PNG encode on the UI thread after each Animate export,
     // move to a worker thread if large captures make the toast lag

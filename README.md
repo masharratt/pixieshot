@@ -30,7 +30,7 @@ Everything runs on your Mac. Nothing is uploaded unless you ask.
 ## ✨ Features
 
 ### 🎀 Beautify, in one click
-- **Gradient or solid backgrounds** with adjustable padding
+- **Gradient or solid backgrounds** with adjustable padding, and a colour picker in the editor to change them after the fact
 - **Rounded corners, drop shadow and border**
 - **Size presets:** square 1:1, 16:9, 9:16 stories, 4:5 feed and 4:3
 - **Auto-balance:** evens out lopsided margins so your content sits perfectly centred
