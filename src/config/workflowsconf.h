@@ -100,6 +100,7 @@ private:
     QSpinBox* m_animDuration = nullptr;
     QSpinBox* m_animFps = nullptr;
     QComboBox* m_animFormat = nullptr;
+    QCheckBox* m_animShowPreview = nullptr;
     QLabel* m_animPreview = nullptr;
     // The same animation about as wide as a feed thumbnail, to judge how it
     // reads small

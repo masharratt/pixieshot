@@ -150,11 +150,12 @@ bool isStyleKey(const QString& key)
         return false;
     }
     // Behaviour or delivery, not look: applying a pack must not switch the
-    // user's MP4/GIF choice or frame rate. beautifyAlways is listed so a
+    // user's MP4/GIF choice, frame rate or whether Animate previews first. beautifyAlways is listed so a
     // future option with a look-like name cannot slip in by accident.
     static const QStringList kDenied = { QStringLiteral("beautifyAlways"),
                                          QStringLiteral("animFormat"),
-                                         QStringLiteral("animFps") };
+                                         QStringLiteral("animFps"),
+                                         QStringLiteral("animShowPreview") };
     if (kDenied.contains(key)) {
         return false;
     }

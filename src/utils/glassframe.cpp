@@ -8,24 +8,25 @@
 
 namespace {
 
-// Look of the glass (macOS Liquid Glass: vibrant, lit from above, lifted)
-constexpr float kTintTop = 0.20f;       // white sheen at the top of the pane
-constexpr float kTintBottom = 0.04f;    // ... fading to this at the bottom
-constexpr float kVibrancy = 1.6f;       // saturation boost of what is behind
-constexpr float kLift = 1.06f;          // brightness lift of what is behind
-constexpr float kRefractionOuter = 0.75f; // max displacement at the outer edge
+// Look of the glass (macOS Liquid Glass: vibrant, lit from above, lifted).
+// Tuned bold on purpose: it must read as glass even over a smooth gradient.
+constexpr float kTintTop = 0.30f;       // white sheen at the top of the pane
+constexpr float kTintBottom = 0.06f;    // ... fading to this at the bottom
+constexpr float kVibrancy = 1.9f;       // saturation boost of what is behind
+constexpr float kLift = 1.10f;          // brightness lift of what is behind
+constexpr float kRefractionOuter = 0.95f; // max displacement at the outer edge
 constexpr float kRefractionInner = 0.35f; // ... and at the inner edge
 constexpr float kBlur = 0.9f;           // blur radius per pass, share of bezel
 constexpr int kBlurPasses = 3;
-constexpr float kRimAlpha = 0.75f;      // specular highlight strength
-constexpr float kRimFloor = 0.35f;      // highlight left at the bottom-right
-constexpr float kRimWidth = 2.5f;       // logical px
-constexpr float kGlowAlpha = 0.14f;     // soft light inside the outer edge
+constexpr float kRimAlpha = 0.92f;      // specular highlight strength
+constexpr float kRimFloor = 0.55f;      // highlight left at the bottom-right
+constexpr float kRimWidth = 3.0f;       // logical px
+constexpr float kGlowAlpha = 0.24f;     // soft light inside the outer edge
 constexpr float kGlowWidth = 0.35f;     // share of bezel
-constexpr float kInnerShadowAlpha = 0.20f; // soft shade where the shot sits
+constexpr float kInnerShadowAlpha = 0.30f; // soft shade where the shot sits
 constexpr float kInnerShadowWidth = 0.35f; // share of bezel
 constexpr float kHairlineAlpha = 0.22f; // dark 1 px line against the shot
-constexpr float kShadowAlpha = 0.24f;   // drop shadow right under the edge
+constexpr float kShadowAlpha = 0.34f;   // drop shadow right under the edge
 constexpr float kShadowSpread = 0.45f;  // how far it fades out, share of bezel
 constexpr float kShadowDrop = 0.3f;     // shifted down, share of the spread
 constexpr float kNoise = 2.0f;          // +- levels of static noise

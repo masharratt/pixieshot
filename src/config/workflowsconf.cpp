@@ -354,6 +354,12 @@ void WorkflowsConf::addAnimateGroup()
     m_animFormat = new QComboBox(box);
     animpickers::fillFormats(m_animFormat);
     form->addRow(tr("Format"), m_animFormat);
+
+    m_animShowPreview = new QCheckBox(tr("Preview before export"), box);
+    m_animShowPreview->setToolTip(
+      tr("Animate opens a player to check the loop and pick a style first. "
+         "Off: Animate exports right away with the choices above."));
+    form->addRow(QString(), m_animShowPreview);
     boxLayout->addLayout(form);
 
     m_animPreview = new QLabel(box);
@@ -389,6 +395,10 @@ void WorkflowsConf::addAnimateGroup()
                 this,
                 &WorkflowsConf::onAnimChanged);
     }
+    connect(m_animShowPreview,
+            &QCheckBox::toggled,
+            this,
+            &WorkflowsConf::onAnimChanged);
     for (QSpinBox* spin : { m_animDuration, m_animFps }) {
         connect(spin,
                 QOverload<int>::of(&QSpinBox::valueChanged),
@@ -410,6 +420,7 @@ void WorkflowsConf::onAnimChanged()
     config.setAnimDurationSec(m_animDuration->value());
     config.setAnimFps(m_animFps->value());
     config.setAnimFormat(m_animFormat->currentData().toInt());
+    config.setAnimShowPreview(m_animShowPreview->isChecked());
     rebuildAnimPreview();
 }
 
@@ -730,6 +741,7 @@ void WorkflowsConf::updateComponents()
     m_animFps->setValue(config.animFps());
     m_animFormat->setCurrentIndex(
       std::max(0, m_animFormat->findData(config.animFormat())));
+    m_animShowPreview->setChecked(config.animShowPreview());
 #endif
     if (m_gifFps != nullptr) {
         m_gifFps->setValue(config.gifFps());

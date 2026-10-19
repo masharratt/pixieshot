@@ -58,7 +58,8 @@ class TestGlassFrame : public QObject
     Q_OBJECT
 
 private slots:
-    // Bug: "the glass frame just looks like a transparent layer". A white
+    // Bug: "the glass frame just looks like a transparent layer", then
+    // "make the glass bolder": thresholds raised for the bolder look. A white
     // tint over a blurred copy of the background washes colour out; real
     // glass (vibrancy) makes what is behind it richer.
     void glassIsMoreSaturatedThanTheBackground_bugFlatTransparentLayer()
@@ -68,7 +69,7 @@ private slots:
         // Centre line of the left side of the ring, mid height
         const QColor glass =
           out.pixelColor(kBezel.left() + kThickness / 2, kBezel.center().y());
-        QVERIFY2(glass.hsvSaturationF() > bg.hsvSaturationF() + 0.03,
+        QVERIFY2(glass.hsvSaturationF() > bg.hsvSaturationF() + 0.08,
                  qPrintable(describe(glass)));
     }
 
@@ -81,7 +82,7 @@ private slots:
         const double top = meanLightness(out, kBezel.top() + kThickness / 2, x0, x1);
         const double bottom =
           meanLightness(out, kBezel.bottom() - kThickness / 2, x0, x1);
-        QVERIFY2(top > bottom + 8,
+        QVERIFY2(top > bottom + 16,
                  qPrintable(QStringLiteral("top %1 bottom %2").arg(top).arg(bottom)));
     }
 
@@ -93,7 +94,7 @@ private slots:
         const int y = kBezel.center().y();
         const QColor edge = out.pixelColor(kBezel.right(), y);
         const QColor middle = out.pixelColor(kBezel.right() - kThickness / 2, y);
-        QVERIFY2(edge.lightness() >= middle.lightness() + 15,
+        QVERIFY2(edge.lightness() >= middle.lightness() + 25,
                  qPrintable(describe(edge) + " " + describe(middle)));
         const QColor leftEdge = out.pixelColor(kBezel.left(), y);
         QVERIFY2(leftEdge.lightness() > edge.lightness(),
@@ -122,7 +123,7 @@ private slots:
         const int x = kBezel.center().x();
         const QColor below = out.pixelColor(x, kBezel.bottom() + 2);
         const QColor above = out.pixelColor(x, kBezel.top() - 2);
-        QVERIFY2(below.lightness() <= bg.lightness() - 8, qPrintable(describe(below)));
+        QVERIFY2(below.lightness() <= bg.lightness() - 14, qPrintable(describe(below)));
         QVERIFY2(below.lightness() < above.lightness(),
                  qPrintable(describe(below) + " " + describe(above)));
         const int reach = glassframe::outset(kBezel, kShot, 1.0);

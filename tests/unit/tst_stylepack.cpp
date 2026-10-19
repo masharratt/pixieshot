@@ -102,6 +102,8 @@ private slots:
         // Delivery choices, not look
         QVERIFY(!stylepack::isStyleKey(QStringLiteral("animFormat")));
         QVERIFY(!stylepack::isStyleKey(QStringLiteral("animFps")));
+        // A behaviour switch, not part of a look
+        QVERIFY(!stylepack::isStyleKey(QStringLiteral("animShowPreview")));
         QVERIFY(stylepack::isStyleKey(QStringLiteral("animMotion")));
         QVERIFY(stylepack::isStyleKey(QStringLiteral("effectPalette")));
         QVERIFY(!stylepack::isStyleKey(QStringLiteral("savePath")));

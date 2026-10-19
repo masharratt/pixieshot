@@ -138,6 +138,7 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     OPTION("animDurationSec"             ,BoundedInt         ( 3, 10, 5      )),
     OPTION("animFps"                     ,BoundedInt         ( 15, 60, 30    )),
     OPTION("animFormat"                  ,BoundedInt         ( 0, 2, 0       )),
+    OPTION("animShowPreview"             ,Bool               ( true          )),
     // 0 annotations static, 1 each draws itself in (AnnotationMode)
     OPTION("animAnnotations"             ,BoundedInt         ( 0, 1, 1       )),
     OPTION("captureHistoryMax"           ,LowerBoundedInt    ( 1, 500        )),

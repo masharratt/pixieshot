@@ -2613,6 +2613,13 @@ void CaptureWidget::handleAnimateRequest()
     }
     const AnimChoice initial =
       animChoiceFrom(m_animSettings, AnimExportJob::configuredChoice());
+    if (!ConfigHandler().animShowPreview()) {
+        // Preview switched off: export the saved choices straight away
+        QTimer::singleShot(0, this, [this, source, initial]() {
+            exportAnimation(source, initial);
+        });
+        return;
+    }
     // Window-modal: the editor waits underneath and keeps everything on
     // Cancel. Owned by this widget, so it can never outlive it.
     auto* dialog = new AnimPreviewDialog(source, initial, this);

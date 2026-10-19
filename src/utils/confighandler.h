@@ -167,6 +167,7 @@ public:
     CONFIG_GETTER_SETTER(animDurationSec, setAnimDurationSec, int)
     CONFIG_GETTER_SETTER(animFps, setAnimFps, int)
     CONFIG_GETTER_SETTER(animFormat, setAnimFormat, int)
+    CONFIG_GETTER_SETTER(animShowPreview, setAnimShowPreview, bool)
     CONFIG_GETTER_SETTER(animAnnotations, setAnimAnnotations, int)
 
     // All effect options as one value, the single place that reads them

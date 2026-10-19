@@ -1,6 +1,6 @@
 # Feature Status (masharratt/flameshot fork)
 
-**Last Updated:** 2026-10-18 (Mac-style glass, style pack previews, Animate preview and editable Animate output)
+**Last Updated:** 2026-10-18 (Bolder glass; Animate preview can be switched off)
 
 | Token | Meaning |
 |-------|---------|

@@ -371,6 +371,39 @@ private slots:
         QCOMPARE(outputsIn(shotsDir()), filesBefore);
     }
 
+    // "add a toggle in the config for animation to show preview or not":
+    // with the preview off, Animate exports straight away with the saved
+    // choices and no dialog appears
+    void previewOffExportsStraightAway()
+    {
+        ConfigHandler().setAnimShowPreview(false);
+        const QString path = shotsDir() + QStringLiteral("/nopreview.png");
+        QPixmap shot = syntheticShot();
+        QVERIFY(shot.save(path));
+        auto* editor = new EditorWindow(path, shot, twoObjects());
+        editor->show();
+        QVERIFY(QTest::qWaitForWindowExposed(editor));
+        const QStringList filesBefore = outputsIn(shotsDir());
+
+        CaptureToolButton* button = animateButton(editor);
+        QVERIFY(button);
+        QTest::mouseClick(button, Qt::LeftButton, {}, button->rect().center());
+        pump(100);
+        const bool noDialog = openPreview() == nullptr;
+        const bool started = !qApp->findChildren<AnimExportJob*>().isEmpty();
+        QVERIFY(waitForAnimationJobs());
+        ConfigHandler().setAnimShowPreview(true);
+        QVERIFY2(noDialog, "the preview must not open when it is switched off");
+        QVERIFY2(started || outputsIn(shotsDir()).size() > filesBefore.size(),
+                 "Animate must export straight away when the preview is off");
+    }
+
+    void previewIsOnByDefault()
+    {
+        QCOMPARE(ConfigHandler::optionDefault(QStringLiteral("animShowPreview")),
+                 QVariant(true));
+    }
+
     // Export from the preview: GIF output that can be edited again
     void exportedAnimationIsEditableFromItsToast()
     {
