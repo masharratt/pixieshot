@@ -12,12 +12,16 @@ class QFileSystemWatcher;
 class VisualsEditor;
 class WorkflowsConf;
 class QWidget;
+class QScrollArea;
 
 class ConfigWindow : public QWidget
 {
     Q_OBJECT
 public:
     explicit ConfigWindow(QWidget* parent = nullptr);
+
+    // Makes the window no taller than availableHeight; tall tabs scroll.
+    void fitToAvailableHeight(int availableHeight);
 
 signals:
     void updateChildren();
@@ -43,5 +47,6 @@ private:
     WorkflowsConf* m_workflows;
     QWidget* m_workflowsTab;
 
+    QScrollArea* scrollPage(QWidget* page);
     void initErrorIndicator(QWidget* tab, QWidget* widget);
 };

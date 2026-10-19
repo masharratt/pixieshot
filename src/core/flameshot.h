@@ -5,6 +5,7 @@
 
 #include "core/capturedelay.h"
 #include "core/capturerequest.h"
+#include "core/dockwindowtracker.h"
 #include "widgets/capture/capturewidget.h"
 
 #include <QMap>
@@ -173,7 +174,8 @@ public:
 
 private:
     void onWindowVisibilityChanged(QWindow::Visibility newVisibility);
-    int m_dockIconVisibleCount = 0;
+    void applyDockVisibility(QWindow* window, bool visible);
+    DockWindowTracker m_dockTracker;
     bool m_editorDockIcon = false;
 #endif
 
