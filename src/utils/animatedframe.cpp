@@ -332,7 +332,8 @@ QImage AnimatedFrames::frameAt(double phase, const shotmotion::Pose& pose) const
                                   m_layout.bezelRadius,
                                   m_layout.shot,
                                   m_layout.cornerRadius,
-                                  m_dpr);
+                                  m_dpr,
+                                  shotLayer);
         }
         QPainter p(&out);
         p.drawImage(m_layout.shot.topLeft(), shotLayer);
@@ -376,7 +377,8 @@ QImage AnimatedFrames::frameAt(double phase, const shotmotion::Pose& pose) const
                               m_layout.bezelRadius,
                               m_layout.shot.translated(-origin),
                               m_layout.cornerRadius,
-                              m_dpr);
+                              m_dpr,
+                              shotLayer);
     }
     {
         QPainter lp(&layer);

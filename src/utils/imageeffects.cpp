@@ -286,8 +286,15 @@ QImage composeWithGlass(const QImage& shotImage,
             p.drawImage(bg.origin, shadowImage);
         }
     }
-    glassframe::drawBezel(
-      out, behind, bezel, outerRadius, shotRect, innerRadius, dpr);
+    // The bevel also bends the shot's own edge into view
+    glassframe::drawBezel(out,
+                          behind,
+                          bezel,
+                          outerRadius,
+                          shotRect,
+                          innerRadius,
+                          dpr,
+                          physical(shotImage));
     {
         QPainter p(&out);
         p.drawImage(shotRect.topLeft(), physical(shotImage));
