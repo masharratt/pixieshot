@@ -40,20 +40,25 @@ constexpr int kThumbWidth = 200;
 
 const AnimStyle kStyles[] = { AnimStyle::Aurora, AnimStyle::GradientShift,
                               AnimStyle::Blobs,  AnimStyle::Twinkle,
-                              AnimStyle::Flow,   AnimStyle::Silk };
+                              AnimStyle::Flow,   AnimStyle::Silk,
+                              AnimStyle::Mesh,   AnimStyle::Bokeh,
+                              AnimStyle::Waves,  AnimStyle::Grid,
+                              AnimStyle::Prism };
 const ShotMotion kMotions[] = { ShotMotion::None, ShotMotion::Tilt,
-                                ShotMotion::Float };
+                                ShotMotion::Float, ShotMotion::Orbit };
 
 const char* styleName(AnimStyle s)
 {
     static const char* names[] = { "aurora", "gradient", "blobs",
-                                   "twinkle", "flow", "silk" };
+                                   "twinkle", "flow", "silk",
+                                   "mesh", "bokeh", "waves",
+                                   "grid", "prism" };
     return names[int(s)];
 }
 
 const char* motionName(ShotMotion m)
 {
-    static const char* names[] = { "none", "tilt", "float" };
+    static const char* names[] = { "none", "tilt", "float", "orbit" };
     return names[int(m)];
 }
 
@@ -298,8 +303,9 @@ private slots:
               minContrast,
               minShare,
               maxShare);
-        QCOMPARE(combos, 36);
-        QCOMPARE(frames, 36 * 11);
+        QCOMPARE(combos, kAnimStyleCount * kShotMotionCount * 2);
+        QCOMPARE(combos, 88);
+        QCOMPARE(frames, combos * 11);
         QVERIFY2(annotationChecks > 0, "no hold frame was checked for annotations");
         QVERIFY2(failures.isEmpty(), qPrintable(failures.join('\n')));
     }

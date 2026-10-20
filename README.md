@@ -41,7 +41,7 @@ Everything runs on your Mac. Nothing is uploaded unless you ask.
 - **From screenshot background:** a dreamy blurred copy of your own shot, like album art
 - **Auto colours:** a gradient picked to match each screenshot
 - **Grain** to keep gradients silky smooth
-- **Animate:** export your screenshot over a looping animated background (Aurora, Gradient shift, Blobs or Twinkle) as **MP4 or GIF**, ready to post. Preview the loop first, and reopen the result later to move your annotations and export again
+- **Animate:** export your screenshot over a looping animated background (Aurora, Flow, Silk, Mesh gradient, Bokeh, Waves, Glow grid, Prism light and more) as **MP4 or GIF**, ready to post. Preview the loop first, and reopen the result later to move your annotations and export again
 - **Annotations draw themselves in:** in an animated export, your arrows, boxes, text and numbered steps appear one after another in the order you made them
 - **Style packs:** save a whole look (background, glass, padding, colours, grain, Animate style) as one small `.pixiestyle` file, apply it in one click and share it. Five built in: Midnight Glass, Sunset Pop, Album Art, Clean Paper and Ocean
 

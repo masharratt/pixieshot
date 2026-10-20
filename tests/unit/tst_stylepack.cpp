@@ -10,8 +10,11 @@
 
 #include "config/stylepackrow.h"
 #include "config/workflowsconf.h"
+#include "utils/animatedbg.h"
 #include "utils/appidentity.h"
 #include "utils/confighandler.h"
+#include "utils/shotmotion.h"
+#include "widgets/animpickers.h"
 #include "utils/stylepack.h"
 #include "utils/stylepackpreview.h"
 
@@ -26,6 +29,7 @@
 #include <QJsonObject>
 #include <QLabel>
 #include <QPushButton>
+#include <QSet>
 #include <QSignalSpy>
 #include <QSpinBox>
 #include <QSettings>
@@ -615,6 +619,65 @@ private slots:
         QCOMPARE(stylepack::fromCurrentConfig(QStringLiteral("x")).settings,
                  before);
         QCOMPARE(ConfigHandler().effectPadding(), 64);
+    }
+
+    // Every Animate style and shot motion can be saved, packed and picked;
+    // one past the last is refused, so the bounds follow the enums
+    void everyAnimStyleAndMotionIsAccepted()
+    {
+        for (int v = 0; v < kAnimStyleCount; ++v) {
+            QVERIFY2(ConfigHandler::isValidOptionValue(QStringLiteral("animStyle"), v),
+                     qPrintable(QString::number(v)));
+        }
+        QVERIFY(!ConfigHandler::isValidOptionValue(QStringLiteral("animStyle"),
+                                                   kAnimStyleCount));
+        QVERIFY(!ConfigHandler::isValidOptionValue(QStringLiteral("animStyle"), -1));
+        for (int v = 0; v < kShotMotionCount; ++v) {
+            QVERIFY2(ConfigHandler::isValidOptionValue(QStringLiteral("animMotion"), v),
+                     qPrintable(QString::number(v)));
+        }
+        QVERIFY(!ConfigHandler::isValidOptionValue(QStringLiteral("animMotion"),
+                                                   kShotMotionCount));
+
+        QJsonObject settings;
+        settings[QStringLiteral("animStyle")] = int(AnimStyle::Prism);
+        settings[QStringLiteral("animMotion")] = int(ShotMotion::Orbit);
+        stylepack::ParseResult r = stylepack::parse(packJson(settings));
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QVERIFY2(r.warnings.isEmpty(), qPrintable(r.warnings.join("; ")));
+        QCOMPARE(r.pack.settings.value(QStringLiteral("animStyle")).toInt(),
+                 int(AnimStyle::Prism));
+        QCOMPARE(r.pack.settings.value(QStringLiteral("animMotion")).toInt(),
+                 int(ShotMotion::Orbit));
+        settings[QStringLiteral("animStyle")] = kAnimStyleCount;
+        settings[QStringLiteral("animMotion")] = kShotMotionCount;
+        r = stylepack::parse(packJson(settings));
+        QVERIFY(r.ok);
+        QCOMPARE(r.warnings.size(), 2);
+        QVERIFY(r.pack.settings.isEmpty());
+
+        // The pickers list each one once, by name, and the pack chip uses
+        // the same name
+        QComboBox styles;
+        animpickers::fillStyles(&styles);
+        QCOMPARE(styles.count(), kAnimStyleCount);
+        QSet<int> values;
+        QSet<QString> names;
+        for (int i = 0; i < styles.count(); ++i) {
+            values << styles.itemData(i).toInt();
+            names << styles.itemText(i);
+            QVERIFY(!styles.itemText(i).isEmpty());
+            stylepack::Pack p;
+            p.settings[QStringLiteral("animStyle")] = styles.itemData(i);
+            const QString chip = QStringLiteral("Animate: %1").arg(styles.itemText(i));
+            QVERIFY2(stylepackpreview::chips(p).contains(chip), qPrintable(chip));
+        }
+        QCOMPARE(values.size(), kAnimStyleCount);
+        QCOMPARE(names.size(), kAnimStyleCount);
+        QComboBox motions;
+        animpickers::fillMotions(&motions);
+        QCOMPARE(motions.count(), kShotMotionCount);
+        QCOMPARE(motions.findData(int(ShotMotion::Orbit)), kShotMotionCount - 1);
     }
 
     void chipsDeriveFromSettings()

@@ -5,9 +5,12 @@
 #pragma once
 
 class QComboBox;
+class QString;
 
 namespace animpickers {
 
+// The name a style is shown by (pickers, style pack chips)
+QString styleName(int value);
 void fillStyles(QComboBox* combo);
 void fillMotions(QComboBox* combo);
 void fillFormats(QComboBox* combo);

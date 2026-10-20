@@ -18,14 +18,41 @@ QString tr(const char* text)
 
 } // namespace
 
+QString styleName(int value)
+{
+    switch (animatedbg::styleFrom(value)) {
+        case AnimStyle::Aurora:
+            return tr("Aurora");
+        case AnimStyle::GradientShift:
+            return tr("Gradient shift");
+        case AnimStyle::Blobs:
+            return tr("Blobs");
+        case AnimStyle::Twinkle:
+            return tr("Twinkle");
+        case AnimStyle::Flow:
+            return tr("Flow");
+        case AnimStyle::Silk:
+            return tr("Silk");
+        case AnimStyle::Mesh:
+            return tr("Mesh gradient");
+        case AnimStyle::Bokeh:
+            return tr("Bokeh");
+        case AnimStyle::Waves:
+            return tr("Waves");
+        case AnimStyle::Grid:
+            return tr("Glow grid");
+        case AnimStyle::Prism:
+            return tr("Prism light");
+    }
+    return {};
+}
+
 void fillStyles(QComboBox* combo)
 {
-    combo->addItem(tr("Aurora"), int(AnimStyle::Aurora));
-    combo->addItem(tr("Gradient shift"), int(AnimStyle::GradientShift));
-    combo->addItem(tr("Blobs"), int(AnimStyle::Blobs));
-    combo->addItem(tr("Twinkle"), int(AnimStyle::Twinkle));
-    combo->addItem(tr("Flow"), int(AnimStyle::Flow));
-    combo->addItem(tr("Silk"), int(AnimStyle::Silk));
+    // Stored value order; new styles go at the end of the list
+    for (int value = 0; value < kAnimStyleCount; ++value) {
+        combo->addItem(styleName(value), value);
+    }
 }
 
 void fillMotions(QComboBox* combo)
@@ -33,6 +60,7 @@ void fillMotions(QComboBox* combo)
     combo->addItem(tr("None"), int(ShotMotion::None));
     combo->addItem(tr("Tilt and light sweep"), int(ShotMotion::Tilt));
     combo->addItem(tr("Float"), int(ShotMotion::Float));
+    combo->addItem(tr("Orbit"), int(ShotMotion::Orbit));
     combo->setToolTip(tr("How the screenshot itself moves in the loop."));
 }
 

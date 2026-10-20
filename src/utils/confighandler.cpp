@@ -4,8 +4,10 @@
 #include "confighandler.h"
 #include "tools/capturetool.h"
 #include "utils/abstractlogger.h"
+#include "utils/animatedbg.h"
 #include "utils/beautifypalette.h"
 #include "utils/loginitem.h"
+#include "utils/shotmotion.h"
 #include "utils/valuehandler.h"
 #include "widgets/thumbnailgesture.h"
 
@@ -133,8 +135,8 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     // Animate: 0 Aurora, 1 Gradient shift, 2 Blobs, 3 Twinkle, 4 Flow,
     // 5 Silk; motion 0 none, 1 tilt and light sweep, 2 float; format 0 MP4,
     // 1 GIF, 2 both
-    OPTION("animStyle"                   ,BoundedInt         ( 0, 5, 0       )),
-    OPTION("animMotion"                  ,BoundedInt         ( 0, 2, 1       )),
+    OPTION("animStyle"                   ,BoundedInt         ( 0, kAnimStyleCount - 1, 0 )),
+    OPTION("animMotion"                  ,BoundedInt         ( 0, kShotMotionCount - 1, 1 )),
     OPTION("animDurationSec"             ,BoundedInt         ( 3, 10, 5      )),
     OPTION("animFps"                     ,BoundedInt         ( 15, 60, 30    )),
     OPTION("animFormat"                  ,BoundedInt         ( 0, 2, 0       )),

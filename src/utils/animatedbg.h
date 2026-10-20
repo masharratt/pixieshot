@@ -21,8 +21,14 @@ enum class AnimStyle
     Twinkle = 3,       // the still gradient with softly twinkling sparkles
     Flow = 4,          // bold slanted gradient with liquid ribbons flowing through
     Silk = 5,          // fine twisting strands, front and back lit, on a deep ground
+    Mesh = 6,          // a mesh gradient: colour points drifting and blending
+    Bokeh = 7,         // soft out-of-focus discs drifting over a dim ground
+    Waves = 8,         // layered rolling hills of colour, lit along each crest
+    Grid = 9,          // a perspective floor grid with a glow travelling over it
+    Prism = 10,        // light caustics: rippling bright veins over a glow
 };
-inline constexpr int kAnimStyleCount = 6;
+// Keep in step with the last value: config bounds, pickers and packs use it
+inline constexpr int kAnimStyleCount = 11;
 
 namespace animatedbg {
 
