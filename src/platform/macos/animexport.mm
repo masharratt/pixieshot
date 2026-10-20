@@ -193,29 +193,6 @@ Mp4Result writeMp4(const AnimExportParams& p,
     return Mp4Result::Ok;
 }
 
-// An indexed CGImage that shares the palette, so ImageIO writes these
-// colours instead of picking its own per frame
-CGImageRef indexedImage(const QImage& indexed, CGColorSpaceRef space)
-{
-    NSData* bytes = [NSData dataWithBytes:indexed.constBits()
-                                   length:size_t(indexed.sizeInBytes())];
-    CGDataProviderRef provider =
-      CGDataProviderCreateWithCFData((__bridge CFDataRef)bytes);
-    CGImageRef image = CGImageCreate(size_t(indexed.width()),
-                                     size_t(indexed.height()),
-                                     8,
-                                     8,
-                                     size_t(indexed.bytesPerLine()),
-                                     space,
-                                     kCGImageAlphaNone,
-                                     provider,
-                                     NULL,
-                                     false,
-                                     kCGRenderingIntentDefault);
-    CGDataProviderRelease(provider);
-    return image;
-}
-
 bool writeGif(const AnimExportParams& p,
               Progress& progress,
               QSize* size,
@@ -237,18 +214,7 @@ bool writeGif(const AnimExportParams& p,
     // The shot as in the hold, so annotation colours get palette entries
     samples += gifquant::samplePixels(frames.shotLayerShown(), 4 * kSamplesPerSource);
     const gifquant::Palette palette = gifquant::Palette::fromSamples(samples);
-    QByteArray table;
-    for (QRgb c : palette.colors()) {
-        table.append(char(qRed(c)));
-        table.append(char(qGreen(c)));
-        table.append(char(qBlue(c)));
-    }
-    CGColorSpaceRef rgb = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-    CGColorSpaceRef space = CGColorSpaceCreateIndexed(
-      rgb,
-      size_t(palette.colors().size() - 1),
-      reinterpret_cast<const unsigned char*>(table.constData()));
-    CGColorSpaceRelease(rgb);
+    CGColorSpaceRef space = gifwriter::indexedColorSpace(palette.colors());
 
     const QList<int> delays = gifquant::frameDelaysCs(count, p.durationSec);
     GifWriter gif(p.gifPath, size_t(count));
@@ -265,7 +231,7 @@ bool writeGif(const AnimExportParams& p,
               frames.frame(phase),
               palette,
               frames.shotBounds(frames.poseAt(phase)));
-            CGImageRef image = indexedImage(indexed, space);
+            CGImageRef image = gifwriter::indexedImage(indexed, space);
             if (image == NULL) {
                 *error = QStringLiteral("Could not make a GIF frame.");
                 ok = false;

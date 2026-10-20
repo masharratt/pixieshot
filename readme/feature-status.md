@@ -1,6 +1,6 @@
 # Feature Status (masharratt/flameshot fork)
 
-**Last Updated:** 2026-10-20 (Glass stands out on any backdrop; five more Animate backgrounds and Orbit motion)
+**Last Updated:** 2026-10-20 (README demo GIF made with the Animate renderer)
 
 | Token | Meaning |
 |-------|---------|
@@ -33,6 +33,7 @@ Plan: `planning/PLAN_sharex_fork.md` (local, not committed).
 | Animate preview | dev | Animate opens a preview that plays the loop with the export's own frames, smaller, with Play/Pause and Style, Shot motion and Format pickers. Export keeps the choice; Cancel changes nothing. Off via `animShowPreview` (Workflows tab). | Animated backgrounds | Not yet checked by hand. Frames render on the UI thread at 20 fps. |
 | Editable Animate output | dev | Each Animate MP4/GIF keeps a project (base, annotations, Animate and effect settings) with its history entry. Edit on its toast or Edit again in the history reopens the editor with objects movable; Animate there starts from the same settings. | Animate preview, Re-editable screenshots | Not yet checked by hand. Saving in that editor writes a PNG next to the video. |
 | Style packs | dev | A `.pixiestyle` JSON file holds a whole look; Apply, Save, Import, Export on the Workflows tab. Shows a live preview, a one-line description and ingredient chips per pack before Apply. Five built-ins. | Beautify, Animated backgrounds | Not yet checked by hand. Packs only set keys they carry. |
+| README demo GIF | dev | `scripts/make-demo-gif.sh` builds `tools/demogif` (`-DPIXIE_BUILD_DEMO=ON`) and writes `docs/assets/pixieshot-demo.gif`: the annotated Settings window in four looks (three Animate, one still Beautify) joined by crossfades, through the export renderer and GIF path. | Animated backgrounds, Style packs | macOS only. GIF at 800x450, 12 fps, about 4 MB. Crossfades show both shots at once. |
 | Re-editable screenshots | dev | Annotated captures keep a project (base image plus annotations) with their history entry. Edit again, the after-edit thumbnail and the toast reopen it with objects still editable; the editor can Save and Open .fsproj files. | Capture history | Not yet checked by hand. Project files are kept until the history entry is trimmed or removed. |
 | Capture timer | dev | Option `captureDelaySec` (0 to 10) shows a countdown before hotkey and tray region captures start. Click the countdown to cancel. CLI --delay wins; recordings are not delayed. | Capture overlay | Not yet checked by hand. |
 | Copy Text (OCR) | dev | Toolbar button reads the text and any QR code in the selection with Apple Vision, copies it to the clipboard and closes the capture. | macOS Vision framework | Not yet checked by hand. macOS only, hidden elsewhere. QR path has no automated test. |

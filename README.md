@@ -2,6 +2,8 @@
 
 <img src="docs/assets/pixieshot-banner.svg" alt="Pixieshot: free, open-source screenshot tool for Mac that makes screenshots sparkle" width="100%" />
 
+<img src="docs/assets/pixieshot-demo.gif" alt="Pixieshot's Settings window, annotated with a box, a numbered marker, an arrow and the note One click, shown in four looks: a mesh gradient with a glass frame turning gently, a glowing grid with a tilt, drifting bokeh with a float, and a still Beautify in the Album Art style" width="800" />
+
 # Pixieshot ✨
 
 **The free, open-source screenshot tool for Mac that makes every screenshot look ready to post.**
@@ -128,6 +130,8 @@ cmake --build build
 ctest --test-dir build        # optional: run the tests
 open build/src/Pixieshot.app
 ```
+
+To rebuild the demo GIF at the top of this page, run `scripts/make-demo-gif.sh`.
 
 To keep macOS from asking for Screen Recording permission after every rebuild, sign with a local self-signed certificate and pass `-DCODE_SIGN_IDENTITY="<certificate name>"` to the first `cmake` command.
 

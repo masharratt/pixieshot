@@ -87,6 +87,10 @@ flameshot_add_unit_test(tst_animatedbg SOURCES ${_anim_frame_sources} utils/easi
 flameshot_add_tool_test(tst_animreveal utils/animtimeline.cpp)
 # Design-director check over every style x motion, with and without annotations
 flameshot_add_tool_test(tst_animdirector ${_anim_frame_sources})
+# README demo reel (tools/demogif): the scene list renders a seamless loop
+flameshot_add_tool_test(tst_demoreel ${_anim_frame_sources})
+target_sources(tst_demoreel PRIVATE fakes/annotatedsample.cpp
+  "${CMAKE_SOURCE_DIR}/tools/demogif/demoreel.cpp")
 
 if(APPLE)
   # Vision text recognition (Objective-C++, ARC)

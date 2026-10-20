@@ -160,6 +160,13 @@ if(BUILD_TESTING)
   add_subdirectory(tests/unit)
 endif()
 
+# Fork: README demo GIF generator (tools/demogif), run by
+# scripts/make-demo-gif.sh. Off by default; macOS only (ImageIO GIF writer).
+option(PIXIE_BUILD_DEMO "Build the README demo GIF generator" OFF)
+if(PIXIE_BUILD_DEMO AND APPLE)
+  add_subdirectory(tools/demogif)
+endif()
+
 # CPack
 set(CPACK_PACKAGE_VENDOR "flameshot-org")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Powerful yet simple to use screenshot software.")

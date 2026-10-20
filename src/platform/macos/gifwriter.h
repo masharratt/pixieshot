@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Looping GIF file through ImageIO, shared by the recording GIF conversion
-// and the animated-background export. Include from Objective-C++ (ARC) only.
+// and the animated-background export (and the README demo generator).
+// Include from Objective-C++ (ARC) only.
 
 #pragma once
 
+#include <QByteArray>
+#include <QImage>
 #include <QString>
+#include <QVector>
+#include <QtGui/qrgb.h>
 
 #import <Foundation/Foundation.h>
 #import <ImageIO/ImageIO.h>
@@ -73,3 +78,50 @@ private:
     NSURL* m_url;
     CGImageDestinationRef m_dest = NULL;
 };
+
+namespace gifwriter {
+
+// An indexed sRGB colour space with `colors` (at most 256) as its table.
+// The caller releases it.
+inline CGColorSpaceRef indexedColorSpace(const QVector<QRgb>& colors)
+{
+    QByteArray table;
+    for (QRgb c : colors) {
+        table.append(char(qRed(c)));
+        table.append(char(qGreen(c)));
+        table.append(char(qBlue(c)));
+    }
+    CGColorSpaceRef rgb = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    CGColorSpaceRef space = CGColorSpaceCreateIndexed(
+      rgb,
+      size_t(colors.size() - 1),
+      reinterpret_cast<const unsigned char*>(table.constData()));
+    CGColorSpaceRelease(rgb);
+    return space;
+}
+
+// An indexed CGImage of a Format_Indexed8 image in `space` (its palette), so
+// ImageIO writes these colours instead of picking its own per frame. The
+// caller releases it; null on failure.
+inline CGImageRef indexedImage(const QImage& indexed, CGColorSpaceRef space)
+{
+    NSData* bytes = [NSData dataWithBytes:indexed.constBits()
+                                   length:size_t(indexed.sizeInBytes())];
+    CGDataProviderRef provider =
+      CGDataProviderCreateWithCFData((__bridge CFDataRef)bytes);
+    CGImageRef image = CGImageCreate(size_t(indexed.width()),
+                                     size_t(indexed.height()),
+                                     8,
+                                     8,
+                                     size_t(indexed.bytesPerLine()),
+                                     space,
+                                     kCGImageAlphaNone,
+                                     provider,
+                                     NULL,
+                                     false,
+                                     kCGRenderingIntentDefault);
+    CGDataProviderRelease(provider);
+    return image;
+}
+
+} // namespace gifwriter
