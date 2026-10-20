@@ -1,6 +1,6 @@
 # Feature Status (masharratt/flameshot fork)
 
-**Last Updated:** 2026-10-19 (Editor background picker for Beautify)
+**Last Updated:** 2026-10-20 (Five more Animate backgrounds and Orbit shot motion)
 
 | Token | Meaning |
 |-------|---------|
@@ -28,6 +28,7 @@ Plan: `planning/PLAN_sharex_fork.md` (local, not committed).
 | Beautify shot backgrounds | dev | Background "From screenshot" fills the canvas with the shot blurred, saturated and darkened. `effectAutoColors` picks the gradient colors from the shot. `effectGrain` adds noise to the background. Recordings use the first exported frame. | Beautify | Not yet checked by hand. Auto colors only applies to Gradient. |
 | Animated backgrounds | dev | Animate button (macOS) saves the Beautify look over a looping Aurora, Gradient shift, Blobs or Twinkle background as MP4 and/or GIF next to the capture, with toast, history entry and file URL copied. Overlay also saves the still. Set on the Workflows tab. | Beautify, GIF / MP4 recording | Not yet checked by hand. GIF ~6 MB for 5 s. Editor Animate after Beautify nests the frame. |
 | Animate shot motion and palettes | dev | Animate can tilt the shot with a light sweep or float it (`animMotion`), adds Flow and Silk backgrounds, multi-stop palettes with Sunset Pop, Midnight and Ocean presets (`effectPalette`), and a Thumbnail preview. | Animated backgrounds, Beautify | Not yet checked by hand. Glass refraction is approximate while tilted. |
+| More Animate backgrounds | dev | Five more Animate backgrounds: Mesh gradient, Bokeh, Waves, Glow grid and Prism light, each looping seamlessly in the Beautify colours or palette, plus an Orbit shot motion (a slow 3D turn each way). In the pickers, style packs and previews. | Animated backgrounds, Animate shot motion and palettes | Not yet checked by hand. Grid and Waves edges are softened so the loop seam stays smooth. |
 | Animate draw-in annotations | dev | Animate draws each annotation in, in creation order (strokes trace, arrow heads pop, text types, counters pop), holds with the shot motion, then fades to loop. Pixelate stays fixed. Static option (`animAnnotations`). | Animated backgrounds, Capture projects | Not yet checked by hand. Centred or right-aligned text types from the left of each line. |
 | Animate preview | dev | Animate opens a preview that plays the loop with the export's own frames, smaller, with Play/Pause and Style, Shot motion and Format pickers. Export keeps the choice; Cancel changes nothing. Off via `animShowPreview` (Workflows tab). | Animated backgrounds | Not yet checked by hand. Frames render on the UI thread at 20 fps. |
 | Editable Animate output | dev | Each Animate MP4/GIF keeps a project (base, annotations, Animate and effect settings) with its history entry. Edit on its toast or Edit again in the history reopens the editor with objects movable; Animate there starts from the same settings. | Animate preview, Re-editable screenshots | Not yet checked by hand. Saving in that editor writes a PNG next to the video. |

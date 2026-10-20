@@ -31,7 +31,19 @@ const AnimStyle kStyles[] = { AnimStyle::Aurora,
                               AnimStyle::Blobs,
                               AnimStyle::Twinkle,
                               AnimStyle::Flow,
-                              AnimStyle::Silk };
+                              AnimStyle::Silk,
+                              AnimStyle::Mesh,
+                              AnimStyle::Bokeh,
+                              AnimStyle::Waves,
+                              AnimStyle::Grid,
+                              AnimStyle::Prism };
+
+// The styles added in round 5: each must read as its own look
+const AnimStyle kNewStyles[] = { AnimStyle::Mesh,
+                                 AnimStyle::Bokeh,
+                                 AnimStyle::Waves,
+                                 AnimStyle::Grid,
+                                 AnimStyle::Prism };
 
 const char* nameOf(AnimStyle s)
 {
@@ -48,6 +60,16 @@ const char* nameOf(AnimStyle s)
             return "flow";
         case AnimStyle::Silk:
             return "silk";
+        case AnimStyle::Mesh:
+            return "mesh";
+        case AnimStyle::Bokeh:
+            return "bokeh";
+        case AnimStyle::Waves:
+            return "waves";
+        case AnimStyle::Grid:
+            return "grid";
+        case AnimStyle::Prism:
+            return "prism";
     }
     return "?";
 }
@@ -81,6 +103,21 @@ Diff diff(const QImage& a, const QImage& b)
     }
     d.changedShare = double(changed) / (qint64(a.width()) * a.height());
     return d;
+}
+
+// Mean absolute channel difference, 0..255
+double meanAbsDiff(const QImage& a, const QImage& b)
+{
+    double sum = 0;
+    for (int y = 0; y < a.height(); ++y) {
+        for (int x = 0; x < a.width(); ++x) {
+            const QRgb p = a.pixel(x, y);
+            const QRgb q = b.pixel(x, y);
+            sum += std::abs(qRed(p) - qRed(q)) + std::abs(qGreen(p) - qGreen(q)) +
+                   std::abs(qBlue(p) - qBlue(q));
+        }
+    }
+    return sum / (3.0 * a.width() * a.height());
 }
 
 // Circular mean hue (degrees) of the clearly coloured pixels
@@ -216,7 +253,9 @@ const QVector<QColor>& sunsetPop()
     return stops;
 }
 
-const ShotMotion kMotions[] = { ShotMotion::Tilt, ShotMotion::Float };
+const ShotMotion kMotions[] = { ShotMotion::Tilt,
+                                ShotMotion::Float,
+                                ShotMotion::Orbit };
 
 const char* motionName(ShotMotion m)
 {
@@ -227,6 +266,8 @@ const char* motionName(ShotMotion m)
             return "tilt";
         case ShotMotion::Float:
             return "float";
+        case ShotMotion::Orbit:
+            return "orbit";
     }
     return "?";
 }
@@ -520,7 +561,10 @@ private slots:
 
     void restAtTheLoopEnds()
     {
-        for (ShotMotion m : { ShotMotion::None, ShotMotion::Tilt, ShotMotion::Float }) {
+        for (ShotMotion m : { ShotMotion::None,
+                              ShotMotion::Tilt,
+                              ShotMotion::Float,
+                              ShotMotion::Orbit }) {
             for (int d = 3; d <= 10; ++d) {
                 const shotmotion::Pose rest;
                 QVERIFY(shotmotion::poseAt(m, 0.0, d) == rest);
@@ -780,6 +824,191 @@ private slots:
             QVERIFY(f.frame(0.0).save(
               QStringLiteral("%1/%2-first.png").arg(dir, nameOf(style))));
         }
+    }
+
+    // ---- round 5 styles ---------------------------------------------------
+
+    // Each new style must look like itself, not a recolour of another: its
+    // frame differs from every other style's by a clear mean difference
+    void newStylesAreDistinct_data()
+    {
+        QTest::addColumn<int>("style");
+        for (AnimStyle s : kNewStyles) {
+            QTest::newRow(nameOf(s)) << int(s);
+        }
+    }
+    void newStylesAreDistinct()
+    {
+        QFETCH(int, style);
+        const auto s = AnimStyle(style);
+        const QVector<QColor>& stops = sunsetPop();
+        const QImage mine = animatedbg::renderFrameStops(s, stops, kSize, 0.3, 5);
+        for (AnimStyle other : kStyles) {
+            if (other == s) {
+                continue;
+            }
+            const QImage theirs =
+              animatedbg::renderFrameStops(other, stops, kSize, 0.3, 5);
+            const double d = meanAbsDiff(mine, theirs);
+            QVERIFY2(d > 12.0,
+                     qPrintable(QStringLiteral("%1 vs %2: mean diff %3")
+                                  .arg(nameOf(s), nameOf(other))
+                                  .arg(d)));
+        }
+    }
+
+    // Never frozen: every tenth of the loop the picture has moved on
+    void newStylesNeverFreeze_data() { newStylesAreDistinct_data(); }
+    void newStylesNeverFreeze()
+    {
+        QFETCH(int, style);
+        const auto s = AnimStyle(style);
+        QImage previous = animatedbg::renderFrame(s, kColors, kSize, 0.0, 7);
+        for (int i = 1; i <= 10; ++i) {
+            const QImage img =
+              animatedbg::renderFrame(s, kColors, kSize, i / 10.0, 7);
+            const double d = meanAbsDiff(previous, img);
+            QVERIFY2(d > 0.3,
+                     qPrintable(
+                       QStringLiteral("step %1: mean diff %2").arg(i).arg(d)));
+            previous = img;
+        }
+    }
+
+    // cfn: wall-clock bound, flaky on a loaded machine; move to a benchmark
+    // target if CI ever runs these in parallel with heavy jobs
+    void everyStyleBackgroundIsFast_data() { eachStyleLoopsExactly_data(); }
+    void everyStyleBackgroundIsFast()
+    {
+        SKIP_TIMING_UNDER_SANITIZER();
+        QFETCH(int, style);
+        const auto s = AnimStyle(style);
+        const QSize canvas(1920, 1080);
+        animatedbg::renderWorkStops(s, sunsetPop(), canvas, 0.0, 3); // warm up
+        QList<qint64> times;
+        for (int i = 0; i < 7; ++i) {
+            QElapsedTimer t;
+            t.start();
+            const QImage f =
+              animatedbg::renderWorkStops(s, sunsetPop(), canvas, i / 7.0, 3);
+            times << t.nsecsElapsed();
+            QVERIFY(!f.isNull());
+        }
+        std::sort(times.begin(), times.end());
+        const double ms = times.at(times.size() / 2) / 1e6;
+#if defined(QT_NO_DEBUG) || defined(NDEBUG)
+        const double bound = 10.0;
+#else
+        const double bound = 60.0;
+#endif
+        qInfo("%s background at 1920x1080: %.1f ms (bound %.0f ms)",
+              nameOf(s),
+              ms,
+              bound);
+        QVERIFY2(ms <= bound, qPrintable(QString::number(ms)));
+    }
+
+    // Opt-in: a strip of frames (t = 0, 0.33, 0.66) per new style, with a
+    // five-stop palette and with two colours
+    void saveNewStyleStrips()
+    {
+        const QString dir = qEnvironmentVariable("PIXIE_ANIM_SAMPLES");
+        if (dir.isEmpty()) {
+            QSKIP("Set PIXIE_ANIM_SAMPLES to a folder to save sample frames");
+        }
+        QDir().mkpath(dir);
+        EffectSettings s = beautify(true);
+        s.paddingPx = 72;
+        s.cornerRadius = 14;
+        const QImage shot = sampleShot(QSize(900, 560), 2.0);
+        for (AnimStyle style : kNewStyles) {
+            for (bool multi : { true, false }) {
+                s.palette = multi ? sunsetPop() : QVector<QColor>();
+                AnimatedFrames f(shot, s, style, animatedbg::kDefaultSeed, 960);
+                f.setMotion(ShotMotion::Orbit, 5);
+                const double phases[] = { 0.0, 0.33, 0.66 };
+                const QImage first = f.frame(0.0);
+                QImage strip(first.width() * 3 + 16,
+                             first.height(),
+                             QImage::Format_RGB32);
+                strip.fill(Qt::white);
+                QPainter p(&strip);
+                for (int i = 0; i < 3; ++i) {
+                    p.drawImage(i * (first.width() + 8), 0, f.frame(phases[i]));
+                }
+                p.end();
+                QVERIFY(strip.save(QStringLiteral("%1/%2-%3.png")
+                                     .arg(dir,
+                                          nameOf(style),
+                                          multi ? "sunset" : "violet")));
+            }
+        }
+    }
+
+    // ---- orbit --------------------------------------------------------------
+
+    // A slow turn one way, then the other, about the vertical axis, from
+    // rest to rest, with no jolt where it starts
+    void orbitTurnsBothWays()
+    {
+        double lo = 0;
+        double hi = 0;
+        for (int i = 0; i <= 100; ++i) {
+            const shotmotion::Pose pose =
+              shotmotion::poseAt(ShotMotion::Orbit, i / 100.0, 5);
+            lo = std::min(lo, pose.amount);
+            hi = std::max(hi, pose.amount);
+            QCOMPARE(pose.sweep, -1.0);
+        }
+        QVERIFY2(hi > 0.95 && hi <= 1.0, qPrintable(QString::number(hi)));
+        QVERIFY2(lo < -0.95 && lo >= -1.0, qPrintable(QString::number(lo)));
+        // Starts and ends gently: a hundredth from the seam it has barely moved
+        QVERIFY(
+          std::abs(shotmotion::poseAt(ShotMotion::Orbit, 0.01, 5).amount) < 0.02);
+        QVERIFY(
+          std::abs(shotmotion::poseAt(ShotMotion::Orbit, 0.99, 5).amount) < 0.02);
+        const QRectF rect(100, 100, 800, 500);
+        const QTransform right =
+          shotmotion::transformFor(ShotMotion::Orbit, 1.0, rect, 1.0);
+        const QTransform left =
+          shotmotion::transformFor(ShotMotion::Orbit, -1.0, rect, 1.0);
+        QCOMPARE(right.type(), QTransform::TxProject);
+        // Turning one way the right edge goes back (shorter), the other way
+        // the left edge
+        const auto edge = [](const QTransform& t, const QPointF& a, const QPointF& b) {
+            return QLineF(t.map(a), t.map(b)).length();
+        };
+        QVERIFY(edge(right, rect.topRight(), rect.bottomRight()) <
+                edge(right, rect.topLeft(), rect.bottomLeft()));
+        QVERIFY(edge(left, rect.topLeft(), rect.bottomLeft()) <
+                edge(left, rect.topRight(), rect.bottomRight()));
+        // Gentle: corners move by a few percent at most
+        for (const QTransform& t : { right, left }) {
+            for (const QPointF& p : { rect.topLeft(),
+                                      rect.topRight(),
+                                      rect.bottomLeft(),
+                                      rect.bottomRight() }) {
+                const QPointF d = t.map(p) - p;
+                QVERIFY(std::abs(d.x()) < 0.08 * rect.width());
+                QVERIFY(std::abs(d.y()) < 0.08 * rect.height());
+            }
+        }
+        QVERIFY(
+          shotmotion::transformFor(ShotMotion::Orbit, 0.0, rect, 1.0).isIdentity());
+        // The shadow swings the other way to the turn
+        QVERIFY(shotmotion::shadowShift(ShotMotion::Orbit, 1.0, 1.0).x() !=
+                shotmotion::shadowShift(ShotMotion::Orbit, -1.0, 1.0).x());
+    }
+
+    void storedNumbersClamp()
+    {
+        QCOMPARE(kAnimStyleCount, 11);
+        QCOMPARE(kShotMotionCount, 4);
+        QCOMPARE(animatedbg::styleFrom(kAnimStyleCount - 1), AnimStyle::Prism);
+        QCOMPARE(animatedbg::styleFrom(kAnimStyleCount), AnimStyle::Prism);
+        QCOMPARE(animatedbg::styleFrom(-3), AnimStyle::Aurora);
+        QCOMPARE(shotmotion::motionFrom(kShotMotionCount - 1), ShotMotion::Orbit);
+        QCOMPARE(shotmotion::motionFrom(kShotMotionCount), ShotMotion::Orbit);
     }
 
     // cfn: wall-clock bound, flaky on a loaded machine; move to a benchmark

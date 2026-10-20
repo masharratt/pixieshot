@@ -37,6 +37,7 @@ target_sources(
           autocolors.cpp
           glassframe.cpp
           animatedbg.cpp
+          animbgscenes.cpp
           animatedframe.cpp
           animrender.cpp
           easing.cpp

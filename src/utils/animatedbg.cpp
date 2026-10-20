@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "animatedbg.h"
+#include "animbgkit.h"
 #include "backgroundfx.h"
 #include "beautifypalette.h"
 
@@ -11,118 +12,7 @@
 
 namespace {
 
-constexpr float kTau = 6.28318530718f;
-
-struct Rgb
-{
-    float r, g, b; // 0..1
-};
-
-Rgb rgbOf(const QColor& c)
-{
-    return { float(c.redF()), float(c.greenF()), float(c.blueF()) };
-}
-
-Rgb mix(const Rgb& a, const Rgb& b, float t)
-{
-    return { a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t };
-}
-
-Rgb scale(const Rgb& a, float k)
-{
-    return { a.r * k, a.g * k, a.b * k };
-}
-
-// Screen blend of `light` at strength t: brightens without clipping
-Rgb screen(const Rgb& base, const Rgb& light, float t)
-{
-    auto ch = [t](float b, float l) { return 1.f - (1.f - b) * (1.f - l * t); };
-    return { ch(base.r, light.r), ch(base.g, light.g), ch(base.b, light.b) };
-}
-
-QRgb pack(const Rgb& c)
-{
-    auto ch = [](float v) { return std::clamp(int(v * 255.f + 0.5f), 0, 255); };
-    return qRgb(ch(c.r), ch(c.g), ch(c.b));
-}
-
-// Same colour, more light, hue kept
-Rgb lighter(const Rgb& c, float t)
-{
-    return mix(c, { 1, 1, 1 }, t);
-}
-
-// Small deterministic generator for per-seed parameters
-class Random
-{
-public:
-    explicit Random(uint32_t seed)
-      : m_state(uint64_t(seed) * 0x9E3779B97F4A7C15ull + 0x632BE59BD9B4E019ull)
-    {}
-    // 0..1
-    float next()
-    {
-        m_state += 0x9E3779B97F4A7C15ull;
-        uint64_t z = m_state;
-        z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
-        z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
-        z ^= z >> 31;
-        return float(z >> 40) / float(1u << 24);
-    }
-    float range(float lo, float hi) { return lo + (hi - lo) * next(); }
-
-private:
-    uint64_t m_state;
-};
-
-// The palette every style draws from
-struct Palette
-{
-    Rgb a;     // first colour
-    Rgb b;     // last colour
-    Rgb light; // a light tint of their mix, for highlights
-    Rgb deep;  // a dark shade of their mix, for the ground
-    QVector<Rgb> stops; // all colours, first to last (two or more)
-
-    bool multi() const { return stops.size() > 2; }
-    // Colour at t (0..1) along the stops; with two stops mix(a, b, t)
-    Rgb along(float t) const
-    {
-        if (!multi()) {
-            return mix(a, b, t);
-        }
-        const float pos = std::clamp(t, 0.f, 1.f) * float(stops.size() - 1);
-        const int i = std::min(int(pos), int(stops.size()) - 2);
-        return mix(stops[i], stops[i + 1], pos - float(i));
-    }
-    // The i-th of n colours spread over the stops
-    Rgb spread(int i, int n) const
-    {
-        return along(n <= 1 ? 0.f : float(i) / float(n - 1));
-    }
-};
-
-Palette paletteOf(const QVector<QColor>& colors)
-{
-    Palette p;
-    for (const QColor& c : colors) {
-        p.stops << rgbOf(c);
-    }
-    p.a = p.stops.first();
-    p.b = p.stops.last();
-    Rgb mid = mix(p.a, p.b, 0.5f);
-    if (p.multi()) {
-        // The average of every stop, so the middle colours count too
-        mid = { 0, 0, 0 };
-        for (const Rgb& c : p.stops) {
-            mid = { mid.r + c.r, mid.g + c.g, mid.b + c.b };
-        }
-        mid = scale(mid, 1.f / float(p.stops.size()));
-    }
-    p.light = lighter(mid, 0.35f);
-    p.deep = scale(mid, 0.55f);
-    return p;
-}
+using namespace animbgkit;
 
 // Each style renders into `out` (Format_RGB32) for an angle T = 2 pi phase.
 // Every time term is sin/cos of a whole multiple of T, so T = 0 and T = 2 pi
@@ -592,6 +482,21 @@ QImage renderWorkStops(AnimStyle style,
             break;
         case AnimStyle::Silk:
             renderSilk(out, pal, T, rnd);
+            break;
+        case AnimStyle::Mesh:
+            renderMesh(out, pal, T, rnd);
+            break;
+        case AnimStyle::Bokeh:
+            renderBokeh(out, pal, T, rnd);
+            break;
+        case AnimStyle::Waves:
+            renderWaves(out, pal, T, rnd);
+            break;
+        case AnimStyle::Grid:
+            renderGrid(out, pal, T, rnd);
+            break;
+        case AnimStyle::Prism:
+            renderPrism(out, pal, T, rnd);
             break;
     }
     return out;

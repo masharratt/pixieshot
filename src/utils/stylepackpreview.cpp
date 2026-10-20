@@ -3,6 +3,7 @@
 #include "stylepackpreview.h"
 #include "utils/animatedframe.h"
 #include "utils/confighandler.h"
+#include "widgets/animpickers.h"
 
 #include <QCoreApplication>
 #include <QLinearGradient>
@@ -27,25 +28,6 @@ QVariant effective(const stylepack::Pack& pack, const char* key)
     const QString k = QString::fromLatin1(key);
     return pack.settings.contains(k) ? pack.settings.value(k)
                                      : ConfigHandler().value(k);
-}
-
-QString animStyleName(int value)
-{
-    switch (animatedbg::styleFrom(value)) {
-        case AnimStyle::Aurora:
-            return tr("Aurora");
-        case AnimStyle::GradientShift:
-            return tr("Gradient shift");
-        case AnimStyle::Blobs:
-            return tr("Blobs");
-        case AnimStyle::Twinkle:
-            return tr("Twinkle");
-        case AnimStyle::Flow:
-            return tr("Flow");
-        case AnimStyle::Silk:
-            return tr("Silk");
-    }
-    return {};
 }
 
 } // namespace
@@ -140,7 +122,7 @@ QStringList chips(const stylepack::Pack& pack)
         out << tr("Grain");
     }
     out << tr("Animate: %1")
-             .arg(animStyleName(effective(pack, "animStyle").toInt()));
+             .arg(animpickers::styleName(effective(pack, "animStyle").toInt()));
     return out;
 }
 

@@ -14,7 +14,10 @@ enum class ShotMotion
     None = 0,  // the shot stays put
     Tilt = 1,  // gentle 3D tilt that holds while a band of light sweeps by
     Float = 2, // slow vertical drift with a slight breathing scale
+    Orbit = 3, // slow 3D turn one way, then the other, like a turntable
 };
+// Keep in step with the last value: config bounds and pickers use it
+inline constexpr int kShotMotionCount = 4;
 
 namespace shotmotion {
 
@@ -24,6 +27,8 @@ inline constexpr double kMinHoldSec = 1.2;
 inline constexpr double kEaseSec = 0.5;
 inline constexpr double kFloatLiftPx = 8.0;  // logical, scaled by dpr
 inline constexpr double kFloatScale = 0.012; // extra scale at the top
+inline constexpr double kOrbitYawDeg = 10.0;  // turn each way at the peak
+inline constexpr double kOrbitPitchDeg = 3.0; // lean back at the peak
 
 // Tilt loop in seconds: rest, ease in, hold, ease out, rest. The two rests
 // are equal and fill what is left of the loop.
@@ -41,7 +46,9 @@ Timeline timeline(double durationSec);
 // Where a motion is at one moment
 struct Pose
 {
-    double amount = 0.0; // 0 at rest, 1 fully tilted or lifted
+    // 0 at rest, 1 fully tilted or lifted; Orbit runs -1..1, the sign is
+    // the way it turns
+    double amount = 0.0;
     double sweep = -1.0; // light band position 0..1 across the shot, < 0 none
     bool operator==(const Pose& o) const
     {
