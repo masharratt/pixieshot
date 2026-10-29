@@ -1,0 +1,28 @@
+{
+    "format": "pixiestyle",
+    "version": 1,
+    "name": "Rainbow Ridge",
+    "author": "Pixieshot",
+    "description": "Rainbow hills drawn in fine contour lines under a pale sky. Great for event slides and posts.",
+    "settings": {
+        "animStyle": 11,
+        "effectAspect": 0,
+        "effectAutoBalance": false,
+        "effectAutoColors": false,
+        "effectBackground": 2,
+        "effectBackgroundColor1": "#f5c04a",
+        "effectBackgroundColor2": "#4c4edd",
+        "effectBorderColor": "#000000",
+        "effectBorderPx": 0,
+        "effectCornerRadius": 14,
+        "effectGlass": true,
+        "effectGlassPx": 18,
+        "effectGrain": 0,
+        "effectPadding": 72,
+        "effectShadow": true,
+        "effectPalette": "#f5c04a,#e07539,#ff625e,#c2378f,#4c4edd",
+        "animMotion": 2,
+        "animAnnotations": 1,
+        "animDurationSec": 6
+    }
+}

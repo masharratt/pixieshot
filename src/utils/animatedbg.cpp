@@ -498,6 +498,9 @@ QImage renderWorkStops(AnimStyle style,
         case AnimStyle::Prism:
             renderPrism(out, pal, T, rnd);
             break;
+        case AnimStyle::Contours:
+            renderContours(out, pal, T, rnd);
+            break;
     }
     return out;
 }

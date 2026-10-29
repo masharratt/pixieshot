@@ -38,6 +38,7 @@ target_sources(
           glassframe.cpp
           animatedbg.cpp
           animbgscenes.cpp
+          animbgcontours.cpp
           animatedframe.cpp
           animrender.cpp
           easing.cpp

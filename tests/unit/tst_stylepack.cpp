@@ -361,6 +361,7 @@ private slots:
                                QStringLiteral("Clean Paper"),
                                QStringLiteral("Midnight Glass"),
                                QStringLiteral("Ocean"),
+                               QStringLiteral("Rainbow Ridge"),
                                QStringLiteral("Sunset Pop") }));
         // Built-ins never touch behaviour options
         QCOMPARE(ConfigHandler().beautifyAlways(), false);
@@ -392,7 +393,21 @@ private slots:
                                 "]"));
             ++checked;
         }
-        QCOMPARE(checked, 5);
+        QCOMPARE(checked, 6);
+    }
+
+    void rainbowRidgeValues()
+    {
+        const stylepack::ParseResult r = stylepack::loadFile(
+          stylepack::builtInDir() + QStringLiteral("/rainbow-ridge.pixiestyle"));
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QCOMPARE(r.pack.name, QStringLiteral("Rainbow Ridge"));
+        QVERIFY(stylepack::applyToConfig(r.pack).isEmpty());
+        ConfigHandler config;
+        QCOMPARE(config.animStyle(), int(AnimStyle::Contours));
+        QCOMPARE(config.effectBackground(), 2);
+        QCOMPARE(config.effectPalette(),
+                 QStringLiteral("#f5c04a,#e07539,#ff625e,#c2378f,#4c4edd"));
     }
 
     void midnightGlassValues()

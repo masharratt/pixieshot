@@ -36,14 +36,16 @@ const AnimStyle kStyles[] = { AnimStyle::Aurora,
                               AnimStyle::Bokeh,
                               AnimStyle::Waves,
                               AnimStyle::Grid,
-                              AnimStyle::Prism };
+                              AnimStyle::Prism,
+                              AnimStyle::Contours };
 
-// The styles added in round 5: each must read as its own look
+// The styles added in round 5 and later: each must read as its own look
 const AnimStyle kNewStyles[] = { AnimStyle::Mesh,
                                  AnimStyle::Bokeh,
                                  AnimStyle::Waves,
                                  AnimStyle::Grid,
-                                 AnimStyle::Prism };
+                                 AnimStyle::Prism,
+                                 AnimStyle::Contours };
 
 const char* nameOf(AnimStyle s)
 {
@@ -70,6 +72,8 @@ const char* nameOf(AnimStyle s)
             return "grid";
         case AnimStyle::Prism:
             return "prism";
+        case AnimStyle::Contours:
+            return "contours";
     }
     return "?";
 }
@@ -1000,12 +1004,48 @@ private slots:
                 shotmotion::shadowShift(ShotMotion::Orbit, -1.0, 1.0).x());
     }
 
+    // Contours is a line drawing (a topographic map look): many thin
+    // bright lines standing out from their neighbours, where the soft styles
+    // have almost none
+    void contoursDrawThinLines()
+    {
+        const QSize size(480, 270);
+        auto lineShare = [&](AnimStyle s) {
+            const QImage img =
+              animatedbg::renderWorkStops(s, sunsetPop(), size, 0.25, 4);
+            int lines = 0;
+            for (int y = 2; y < img.height() - 2; ++y) {
+                for (int x = 2; x < img.width() - 2; ++x) {
+                    const int c = qGray(img.pixel(x, y));
+                    // Brighter than both neighbours two pixels away, on
+                    // either axis: a ridge, not a soft slope
+                    const bool ridgeX = c - qGray(img.pixel(x - 2, y)) > 14 &&
+                                        c - qGray(img.pixel(x + 2, y)) > 14;
+                    const bool ridgeY = c - qGray(img.pixel(x, y - 2)) > 14 &&
+                                        c - qGray(img.pixel(x, y + 2)) > 14;
+                    lines += (ridgeX || ridgeY) ? 1 : 0;
+                }
+            }
+            return double(lines) / double((img.width() - 4) * (img.height() - 4));
+        };
+        const double contours = lineShare(AnimStyle::Contours);
+        QVERIFY2(contours > 0.04, qPrintable(QString::number(contours)));
+        for (AnimStyle soft : { AnimStyle::Mesh, AnimStyle::Aurora, AnimStyle::Waves }) {
+            const double other = lineShare(soft);
+            QVERIFY2(contours > 4.0 * other,
+                     qPrintable(QStringLiteral("contours %1 vs %2 %3")
+                                  .arg(contours)
+                                  .arg(nameOf(soft))
+                                  .arg(other)));
+        }
+    }
+
     void storedNumbersClamp()
     {
-        QCOMPARE(kAnimStyleCount, 11);
+        QCOMPARE(kAnimStyleCount, 12);
         QCOMPARE(kShotMotionCount, 4);
-        QCOMPARE(animatedbg::styleFrom(kAnimStyleCount - 1), AnimStyle::Prism);
-        QCOMPARE(animatedbg::styleFrom(kAnimStyleCount), AnimStyle::Prism);
+        QCOMPARE(animatedbg::styleFrom(kAnimStyleCount - 1), AnimStyle::Contours);
+        QCOMPARE(animatedbg::styleFrom(kAnimStyleCount), AnimStyle::Contours);
         QCOMPARE(animatedbg::styleFrom(-3), AnimStyle::Aurora);
         QCOMPARE(shotmotion::motionFrom(kShotMotionCount - 1), ShotMotion::Orbit);
         QCOMPARE(shotmotion::motionFrom(kShotMotionCount), ShotMotion::Orbit);

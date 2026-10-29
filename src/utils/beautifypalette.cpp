@@ -46,6 +46,13 @@ const QVector<Preset>& presets()
             QColor(0x72, 0x32, 0xF1) } },
         { QT_TRANSLATE_NOOP("WorkflowsConf", "Midnight"), { QColor(0x0F, 0x17, 0x2A), QColor(0x6D, 0x28, 0xD9) } },
         { QT_TRANSLATE_NOOP("WorkflowsConf", "Ocean"), { QColor(0x0E, 0xA5, 0xE9), QColor(0x1E, 0x3A, 0x8A) } },
+        // Rainbow mountains from the sunlit ridges down to deep indigo
+        { QT_TRANSLATE_NOOP("WorkflowsConf", "Rainbow Ridge"),
+          { QColor(0xF5, 0xC0, 0x4A),
+            QColor(0xE0, 0x75, 0x39),
+            QColor(0xFF, 0x62, 0x5E),
+            QColor(0xC2, 0x37, 0x8F),
+            QColor(0x4C, 0x4E, 0xDD) } },
     };
     return list;
 }

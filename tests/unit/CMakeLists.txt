@@ -72,7 +72,7 @@ set(_drawable_tool_sources
     utils/colorutils.cpp utils/pathinfo.cpp)
 # Animated frames and everything they draw with
 set(_anim_frame_sources
-    utils/animatedbg.cpp utils/animbgscenes.cpp utils/animatedframe.cpp utils/animtimeline.cpp utils/animrender.cpp
+    utils/animatedbg.cpp utils/animbgscenes.cpp utils/animbgcontours.cpp utils/animatedframe.cpp utils/animtimeline.cpp utils/animrender.cpp
     utils/shotmotion.cpp utils/beautifylayout.cpp
     utils/imageeffects.cpp utils/backgroundfx.cpp utils/beautifypalette.cpp
     utils/autocolors.cpp utils/glassframe.cpp)
@@ -132,6 +132,7 @@ if(APPLE)
     "${CMAKE_SOURCE_DIR}/src/core/recordingedit.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animatedbg.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animbgscenes.cpp"
+    "${CMAKE_SOURCE_DIR}/src/utils/animbgcontours.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animatedframe.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animrender.cpp"
     "${CMAKE_SOURCE_DIR}/src/utils/animtimeline.cpp"

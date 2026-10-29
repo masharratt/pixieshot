@@ -805,7 +805,7 @@ private slots:
     void presetsAreTheAgreedOnes()
     {
         const auto& presets = beautifypalette::presets();
-        QCOMPARE(presets.size(), 3);
+        QCOMPARE(presets.size(), 4);
         QCOMPARE(QString::fromLatin1(presets.at(0).name), QStringLiteral("Sunset Pop"));
         QCOMPARE(beautifypalette::format(presets.at(0).stops),
                  QStringLiteral("#ffd601,#ff6118,#ee30fb,#fb76fa,#7232f1"));
@@ -815,6 +815,10 @@ private slots:
         QCOMPARE(QString::fromLatin1(presets.at(2).name), QStringLiteral("Ocean"));
         QCOMPARE(beautifypalette::format(presets.at(2).stops),
                  QStringLiteral("#0ea5e9,#1e3a8a"));
+        // Rainbow Ridge: sunlit ridges down to deep indigo
+        QCOMPARE(QString::fromLatin1(presets.at(3).name), QStringLiteral("Rainbow Ridge"));
+        QCOMPARE(beautifypalette::format(presets.at(3).stops),
+                 QStringLiteral("#f5c04a,#e07539,#ff625e,#c2378f,#4c4edd"));
     }
 
     void stopsFollowTheSettings()

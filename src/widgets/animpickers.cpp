@@ -43,6 +43,8 @@ QString styleName(int value)
             return tr("Glow grid");
         case AnimStyle::Prism:
             return tr("Prism light");
+        case AnimStyle::Contours:
+            return tr("Contours");
     }
     return {};
 }

@@ -22,7 +22,7 @@ struct Preset
     const char* name; // translate with QCoreApplication::translate("WorkflowsConf", name)
     QVector<QColor> stops;
 };
-// Sunset Pop, Midnight, Ocean (Custom is the absence of a preset)
+// Sunset Pop, Midnight, Ocean, Rainbow Ridge (Custom is the absence of a preset)
 const QVector<Preset>& presets();
 
 // The colours a gradient uses: the palette when it has two or more stops,

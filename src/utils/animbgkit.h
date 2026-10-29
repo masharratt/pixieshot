@@ -142,5 +142,7 @@ void renderBokeh(QImage& out, const Palette& pal, float T, Random& rnd);
 void renderWaves(QImage& out, const Palette& pal, float T, Random& rnd);
 void renderGrid(QImage& out, const Palette& pal, float T, Random& rnd);
 void renderPrism(QImage& out, const Palette& pal, float T, Random& rnd);
+// In animbgcontours.cpp
+void renderContours(QImage& out, const Palette& pal, float T, Random& rnd);
 
 } // namespace animbgkit

@@ -26,9 +26,10 @@ enum class AnimStyle
     Waves = 8,         // layered rolling hills of colour, lit along each crest
     Grid = 9,          // a perspective floor grid with a glow travelling over it
     Prism = 10,        // light caustics: rippling bright veins over a glow
+    Contours = 11,     // topographic contour lines over rainbow hills
 };
 // Keep in step with the last value: config bounds, pickers and packs use it
-inline constexpr int kAnimStyleCount = 11;
+inline constexpr int kAnimStyleCount = 12;
 
 namespace animatedbg {
 
